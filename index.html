@@ -1,0 +1,2318 @@
+﻿<!-- Version: v1.6.2 (Persistent Travel Advisor) -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simultaneous Translator</title>
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #007aff;
+            --primary-glow: rgba(0, 122, 255, 0.4);
+            --success-color: #34c759;
+            --success-glow: rgba(52, 199, 89, 0.4);
+            --danger-color: #ef4444;
+            --bg-gradient: linear-gradient(160deg, #f0f6ff 0%, #eef2f7 50%, #e2e8f0 100%);
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --card-active-bg: #ffffff;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-dark);
+            padding: 10px 20px;
+        }
+
+        /* Phone frame layout - height optimized for 4 cards */
+        .app-container {
+            width: 100%;
+            max-width: 420px;
+            min-height: 800px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 24px 20px;
+            position: relative;
+            background: transparent;
+        }
+
+        /* Header Layout (Title + Gear button) */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .header-content {
+            flex-grow: 1;
+            text-align: left;
+        }
+
+        h1 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            letter-spacing: -0.01em;
+            margin-bottom: 4px;
+        }
+
+        .status-text {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            min-height: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .status-text.listening {
+            color: var(--danger-color);
+            font-weight: 600;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-text.typing {
+            color: var(--success-color);
+            font-weight: 500;
+        }
+
+        /* Gear Button */
+        .settings-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 6px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            opacity: 0.7;
+        }
+
+        .settings-btn:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        #open-settings-btn:hover {
+            transform: rotate(30deg);
+        }
+
+        /* Cards list - gap adjusted to fit 4 cards */
+        .cards-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex-grow: 1;
+            margin-bottom: 24px;
+            max-height: 580px;
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .cards-list::-webkit-scrollbar {
+            display: none;
+        }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .cards-list {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+
+        /* Card padding adjusted to fit 4 cards beautifully */
+        .card {
+            background: var(--card-bg);
+            border-radius: 18px;
+            padding: 12px 18px;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Active Input Language Card Styling */
+        .card.active-input {
+            background: var(--card-active-bg);
+            border: 2px solid var(--primary-color);
+            box-shadow: 0 8px 24px rgba(0, 122, 255, 0.08);
+        }
+
+        .card.active-input.listening-pulse {
+            animation: borderPulse 1.5s infinite alternate;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .card-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .card.active-input .card-meta {
+            color: var(--primary-color);
+        }
+
+        /* Pulsing dot for active status */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            background: transparent;
+            transition: all 0.3s;
+        }
+
+        .card.active-input .status-dot {
+            background: var(--primary-color);
+            animation: dotPulse 1.5s infinite;
+        }
+
+        .card-icon {
+            font-size: 1.1rem;
+        }
+
+        /* Read Aloud & Actions */
+        .card-actions-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .action-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            opacity: 0.6;
+            transition: all 0.2s;
+            padding: 6px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-icon:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--primary-color);
+        }
+
+        /* Equalizer Animation (TTS active) */
+        .equalizer {
+            display: none;
+            align-items: flex-end;
+            gap: 2.5px;
+            width: 16px;
+            height: 14px;
+            margin-right: 2px;
+        }
+
+        .card.speaking .equalizer {
+            display: flex;
+        }
+
+        .equalizer .bar {
+            width: 2.5px;
+            height: 100%;
+            background-color: var(--success-color);
+            border-radius: 1px;
+            animation: bounce 0.8s infinite ease-in-out alternate;
+        }
+
+        .equalizer .bar:nth-child(1) { animation-delay: 0.15s; animation-duration: 0.55s; }
+        .equalizer .bar:nth-child(2) { animation-delay: 0.35s; animation-duration: 0.75s; }
+        .equalizer .bar:nth-child(3) { animation-delay: 0.05s; animation-duration: 0.45s; }
+
+        /* Dynamic Reactive Border Glow for TTS speaking state */
+        .card.speaking {
+            border: 2px solid rgba(52, 199, 89, var(--speaking-glow-opacity, 0.8));
+            box-shadow: 0 10px var(--speaking-glow-spread, 20px) rgba(52, 199, 89, calc(var(--speaking-glow-opacity, 0.8) * 0.25));
+            background: var(--card-active-bg);
+        }
+
+        .card.speaking .action-icon {
+            opacity: 1;
+            color: var(--success-color);
+            background: rgba(52, 199, 89, 0.1);
+        }
+
+        /* Text Area inside Card */
+        .output-text {
+            font-size: 1.1rem;
+            color: var(--text-dark);
+            line-height: 1.4;
+            min-height: 26px;
+            word-break: break-word;
+            outline: none;
+            border: none;
+            background: transparent;
+            width: 100%;
+        }
+
+        .output-text[contenteditable="true"]:focus {
+            background: rgba(0, 122, 255, 0.03);
+            border-radius: 6px;
+            padding: 2px 4px;
+        }
+
+        .output-text:empty::before {
+            content: attr(data-placeholder);
+            color: #cbd5e1;
+            font-style: italic;
+        }
+
+        /* Big Action Button Area */
+        .button-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            margin-top: 5px;
+        }
+
+        .speak-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            border: none;
+            outline: none;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 8px 22px var(--primary-glow);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            z-index: 2;
+        }
+
+        .speak-btn:active {
+            transform: scale(0.92);
+        }
+
+        .speak-btn svg {
+            width: 26px;
+            height: 26px;
+            fill: white;
+            transition: all 0.3s;
+        }
+
+        .speak-btn span {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: white;
+            margin-top: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Button listening state (Red) */
+        .speak-btn.listening {
+            background: var(--danger-color);
+            box-shadow: 0 8px 22px rgba(239, 68, 68, 0.4);
+        }
+
+        /* Button typing / translate state (Green) */
+        .speak-btn.translate-mode {
+            background: var(--success-color);
+            box-shadow: 0 8px 22px var(--success-glow);
+            border-radius: 22px;
+            width: 130px;
+        }
+
+        /* Glowing rings animation when listening */
+        .ripple-effect {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 2px solid var(--primary-color);
+            opacity: 0;
+            z-index: 1;
+            pointer-events: none;
+            transition: all 0.3s;
+        }
+
+        .speak-btn.listening ~ .ripple-effect {
+            border-color: var(--danger-color);
+            animation: ripple 2s infinite ease-out;
+        }
+
+        .speak-btn.listening ~ .ripple-effect:nth-child(2) {
+            animation-delay: 0.6s;
+        }
+
+        .speak-btn.listening ~ .ripple-effect:nth-child(3) {
+            animation-delay: 1.2s;
+        }
+
+        /* Settings Overlay Modal Styling */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            z-index: 10;
+            border-radius: 24px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .settings-card {
+            background: white;
+            width: 100%;
+            max-width: 350px;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            transform: translateY(20px);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .modal-overlay.open .settings-card {
+            transform: translateY(0);
+        }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .settings-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 1.4rem;
+            line-height: 1;
+            opacity: 0.6;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            opacity: 1;
+        }
+
+        .setting-group {
+            margin-bottom: 18px;
+        }
+
+        .setting-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-bottom: 6px;
+        }
+
+        .setting-select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            background-color: #f8fafc;
+            color: var(--text-dark);
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .setting-select:focus, .setting-input:focus {
+            border-color: var(--primary-color);
+            background-color: white;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+        }
+
+        .setting-input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            background-color: #f8fafc;
+            color: var(--text-dark);
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .key-hint {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            line-height: 1.3;
+        }
+
+        .key-hint a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .key-hint a:hover {
+            text-decoration: underline;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes borderPulse {
+            0% { border-color: var(--primary-color); }
+            100% { border-color: var(--danger-color); box-shadow: 0 10px 30px rgba(239, 68, 68, 0.15); }
+        }
+
+        @keyframes dotPulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.4); opacity: 0.4; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes bounce {
+            0% { height: 25%; }
+            100% { height: 100%; }
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1.6);
+                opacity: 0;
+            }
+        }
+
+        /* Translation Source Badge */
+        .base-badge {
+            display: none;
+            background: linear-gradient(135deg, var(--success-color), #2e8b57);
+            color: white;
+            font-size: 0.62rem;
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            margin-left: 6px;
+            box-shadow: 0 2px 6px rgba(52, 199, 89, 0.25);
+            text-transform: uppercase;
+        }
+
+        /* Highlighting Source card without border-glow conflict */
+        .card.translation-source {
+            border-left: 5px solid var(--success-color);
+            background-color: rgba(52, 199, 89, 0.04) !important;
+        }
+
+        .card.translation-source .base-badge {
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header>
+            <div class="header-content">
+                <h1>Simultaneous Translator (JP·EN·ZH·KO)</h1>
+                <div id="status-display" class="status-text">Tap SPEAK to start or type in the active card</div>
+            </div>
+            <!-- Header Actions -->
+            <div style="display: flex; gap: 6px; align-items: center; margin-left: 10px;">
+                <!-- Next Chat / Clear Button -->
+                <button id="clear-all-btn" class="settings-btn" title="Next Chat (Clear All)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
+                <!-- Local Helper / Travel Assistant Button -->
+                <button id="open-helper-btn" class="settings-btn" title="Local Travel Assistant">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                </button>
+                <!-- History Button -->
+                <button id="open-history-btn" class="settings-btn" title="Translation History">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </button>
+                <!-- Gear Icon to open Settings -->
+                <button id="open-settings-btn" class="settings-btn" title="Settings">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Cards List -->
+        <div class="cards-list">
+            <!-- Japanese Card -->
+            <div id="card-ja" class="card active-input" onclick="setLanguage('ja')">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <span class="status-dot"></span>
+                        <span id="icon-ja" class="card-icon">🎙️</span>
+                        <span id="title-ja">Japanese (You)</span>
+                        <span class="base-badge">Source</span>
+                    </div>
+                    <div class="card-actions-wrapper">
+                        <!-- Tiny Equalizer -->
+                        <div class="equalizer">
+                            <span class="bar"></span>
+                            <span class="bar"></span>
+                            <span class="bar"></span>
+                        </div>
+                        <button id="btn-speak-ja" class="action-icon" title="Read aloud">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="out-ja" class="output-text" contenteditable="true" data-placeholder="Tap here to type or use voice input..."></div>
+            </div>
+
+            <!-- English Card -->
+            <div id="card-en" class="card" onclick="setLanguage('en')">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <span class="status-dot"></span>
+                        <span id="icon-en" class="card-icon">🇺🇸</span>
+                        <span id="title-en">English</span>
+                        <span class="base-badge">Source</span>
+                    </div>
+                    <div class="card-actions-wrapper">
+                        <!-- Tiny Equalizer -->
+                        <div class="equalizer">
+                            <span class="bar"></span>
+                            <span class="bar"></span>
+                            <span class="bar"></span>
+                        </div>
+                        <button id="btn-speak-en" class="action-icon" title="Read aloud">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="out-en" class="output-text" contenteditable="true" data-placeholder="Translation will appear here..."></div>
+            </div>
+
+            <!-- Chinese (Simplified) Card -->
+            <div id="card-zh-CN" class="card" onclick="setLanguage('zh-CN')">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <span class="status-dot"></span>
+                        <span id="icon-zh-CN" class="card-icon">🇨🇳</span>
+                        <span id="title-zh-CN">Chinese (Simplified)</span>
+                        <span class="base-badge">Source</span>
+                    </div>
+                    <div class="card-actions-wrapper">
+                        <!-- Tiny Equalizer -->
+                        <div class="equalizer">
+                            <span class="bar"></span>
+                            <span class="bar"></span>
+                            <span class="bar"></span>
+                        </div>
+                        <button id="btn-speak-zh-CN" class="action-icon" title="Read aloud">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="out-zh-CN" class="output-text" contenteditable="true" data-placeholder="翻译将在此处显示..."></div>
+            </div>
+
+            <!-- Chinese (Traditional) Card -->
+            <div id="card-zh-TW" class="card" onclick="setLanguage('zh-TW')">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <span class="status-dot"></span>
+                        <span id="icon-zh-TW" class="card-icon">🇹🇼</span>
+                        <span id="title-zh-TW">Chinese (Traditional)</span>
+                        <span class="base-badge">Source</span>
+                    </div>
+                    <div class="card-actions-wrapper">
+                        <!-- Tiny Equalizer -->
+                        <div class="equalizer">
+                            <span class="bar"></span>
+                            <span class="bar"></span>
+                            <span class="bar"></span>
+                        </div>
+                        <button id="btn-speak-zh-TW" class="action-icon" title="Read aloud">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="out-zh-TW" class="output-text" contenteditable="true" data-placeholder="翻譯將在此處顯示..."></div>
+            </div>
+
+            <!-- Korean Card -->
+            <div id="card-ko" class="card" onclick="setLanguage('ko')">
+                <div class="card-header">
+                    <div class="card-meta">
+                        <span class="status-dot"></span>
+                        <span id="icon-ko" class="card-icon">🇰🇷</span>
+                        <span id="title-ko">Korean</span>
+                        <span class="base-badge">Source</span>
+                    </div>
+                    <div class="card-actions-wrapper">
+                        <!-- Tiny Equalizer -->
+                        <div class="equalizer">
+                            <span class="bar"></span>
+                            <span class="bar"></span>
+                            <span class="bar"></span>
+                        </div>
+                        <button id="btn-speak-ko" class="action-icon" title="Read aloud">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="out-ko" class="output-text" contenteditable="true" data-placeholder="번역 결과가 여기에 표시됩니다..."></div>
+            </div>
+        </div>
+
+        <!-- Button Area -->
+        <div class="button-area">
+            <button id="speak-btn" class="speak-btn">
+                <svg id="speak-btn-icon" viewBox="0 0 24 24">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                </svg>
+                <span id="speak-btn-text">SPEAK</span>
+            </button>
+            <div class="ripple-effect"></div>
+            <div class="ripple-effect"></div>
+            <div class="ripple-effect"></div>
+        </div>
+
+        <!-- Footer Status Indicators & Version -->
+        <footer style="margin-top: 20px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-muted); border-top: 1px solid rgba(0,0,0,0.06); padding-top: 12px; width: 100%;">
+            <div style="display: flex; gap: 14px; justify-content: center; align-items: center;">
+                <span style="display: flex; align-items: center; gap: 5px;">
+                    <span id="indicator-stt" style="width: 8px; height: 8px; border-radius: 50%; background-color: #94a3b8; display: inline-block; transition: background-color 0.3s;"></span> STT
+                </span>
+                <span style="display: flex; align-items: center; gap: 5px;">
+                    <span id="indicator-gemini" style="width: 8px; height: 8px; border-radius: 50%; background-color: #94a3b8; display: inline-block; transition: background-color 0.3s;"></span> Gemini AI
+                </span>
+                <span style="display: flex; align-items: center; gap: 5px;">
+                    <span id="indicator-tts" style="width: 8px; height: 8px; border-radius: 50%; background-color: #94a3b8; display: inline-block; transition: background-color 0.3s;"></span> TTS
+                </span>
+            </div>
+            <div style="font-size: 0.68rem; opacity: 0.75; font-weight: 500;">v1.6.2 (Persistent Travel Advisor)</div>
+        </footer>
+
+        <!-- Settings Overlay Modal -->
+        <div id="settings-overlay" class="modal-overlay">
+            <div class="settings-card">
+                <div class="settings-header">
+                    <h2>Engine Settings</h2>
+                    <button id="close-settings-btn" class="close-btn" title="Close">&times;</button>
+                </div>
+                
+                <!-- Speech-to-Text Engine Select -->
+                <div class="setting-group">
+                    <label for="select-stt-engine">Speech-to-Text Engine</label>
+                    <select id="select-stt-engine" class="setting-select">
+                        <option value="native">Browser Web Speech API</option>
+                        <option value="whisper-mock">Whisper AI API (Mock)</option>
+                    </select>
+                </div>
+
+                <!-- Translation Engine Select -->
+                <div class="setting-group">
+                    <label for="select-trans-engine">Translation Engine</label>
+                    <select id="select-trans-engine" class="setting-select">
+                        <option value="mymemory">MyMemory API (Neural MT)</option>
+                        <option value="gemini">Google Gemini AI (Real)</option>
+                        <option value="gemini-mock">Gemini Pro AI (Mock)</option>
+                        <option value="deepl-mock">DeepL Translator (Mock)</option>
+                    </select>
+                </div>
+
+                <!-- Gemini API Key Input -->
+                <div id="gemini-key-group" class="setting-group" style="display: none;">
+                    <label for="input-gemini-key">Gemini API Key</label>
+                    <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+                        <input type="password" id="input-gemini-key" class="setting-input" placeholder="AIzaSy..." style="flex-grow: 1;">
+                        <button id="btn-test-gemini" class="setting-select" style="width: auto; padding: 10px 16px; background-color: var(--primary-color); color: white; border: none; font-weight: 600; border-radius: 12px; cursor: pointer; transition: background-color 0.2s;">Test</button>
+                    </div>
+                    <div id="gemini-test-status" style="font-size: 0.8rem; line-height: 1.4; padding: 8px 12px; border-radius: 8px; display: none; margin-bottom: 6px;"></div>
+                    <div class="key-hint">Get a free key from <a href="https://aistudio.google.com/" target="_blank">Google AI Studio</a></div>
+                </div>
+
+                <!-- Gemini Active Model (Auto-detected) -->
+                <div id="gemini-model-group" class="setting-group" style="display: none;">
+                    <label>Active Gemini Model (Auto-detected)</label>
+                    <div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px;">
+                        <span style="font-size: 0.85rem;">✅</span>
+                        <span id="active-model-label" style="font-size: 0.88rem; font-weight: 600; color: #166534; flex-grow: 1;">Detecting...</span>
+                        <button id="btn-refresh-models" title="Re-detect available models" style="background: none; border: none; cursor: pointer; font-size: 0.85rem; color: #166534; opacity: 0.7; padding: 2px 4px;" onclick="fetchAvailableGeminiModels(geminiApiKey)">🔄</button>
+                    </div>
+                    <!-- Hidden select kept for JS compatibility -->
+                    <select id="select-gemini-model" style="display: none;"></select>
+                </div>
+
+                <!-- Text-to-Speech Engine Select -->
+                <div class="setting-group">
+                    <label for="select-tts-preset">Speech Synthesis Voice</label>
+                    <select id="select-tts-preset" class="setting-select">
+                        <option value="default">System Default Voice (Clear)</option>
+                        <option value="high-pitch">High Pitch (Bright / Fast)</option>
+                        <option value="deep-pitch">Deep Pitch (Calm / Warm)</option>
+                    </select>
+                </div>
+
+                <!-- Debug Log Console (Settings Only) -->
+                <div style="margin-top: 16px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 14px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                        <label style="font-size: 0.72rem; opacity: 0.6; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin: 0; color: var(--text-dark);">🔧 Debug Log</label>
+                        <button onclick="document.getElementById('debug-log-console').textContent='';" style="background: none; border: 1px solid rgba(0,0,0,0.2); border-radius: 6px; color: var(--text-dark); opacity: 0.7; font-size: 0.68rem; padding: 2px 8px; cursor: pointer;" title="Clear log">Clear</button>
+                    </div>
+                    <div id="debug-log-console" style="width: 100%; max-height: 140px; overflow-y: auto; padding: 8px 10px; background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; font-family: 'Courier New', Courier, monospace; font-size: 0.72rem; color: #0f172a; line-height: 1.6; white-space: pre-wrap; word-break: break-all; min-height: 48px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);">No logs yet.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Overlay Modal -->
+        <div id="history-overlay" class="modal-overlay">
+            <div class="settings-card" style="max-height: 80%; display: flex; flex-direction: column;">
+                <div class="settings-header">
+                    <h2>Translation History</h2>
+                    <button id="close-history-btn" class="close-btn" title="Close">&times;</button>
+                </div>
+                <!-- History List Container -->
+                <div id="history-list-container" style="flex-grow: 1; overflow-y: auto; margin-bottom: 16px; padding-right: 4px; display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Dynamically populated history items will go here -->
+                </div>
+                <button id="clear-history-db-btn" class="setting-select" style="background-color: var(--danger-color); color: white; border: none; font-weight: 600; border-radius: 12px; cursor: pointer; padding: 10px; transition: background-color 0.2s;">Clear History List</button>
+            </div>
+        </div>
+
+        <!-- Travel Assistant Overlay Modal -->
+        <div id="helper-overlay" class="modal-overlay">
+            <div class="settings-card" style="max-height: 85%; display: flex; flex-direction: column; max-width: 380px;">
+                <div class="settings-header" style="margin-bottom: 12px;">
+                    <h2>📍 Local Travel Assistant</h2>
+                    <button id="close-helper-btn" class="close-btn" title="Close">&times;</button>
+                </div>
+                
+                <!-- Country/Location Selection -->
+                <div class="setting-group" style="margin-bottom: 14px;">
+                    <label for="select-current-location">Where are you now? (今いる国)</label>
+                    <select id="select-current-location" class="setting-select">
+                        <option value="TW">Taiwan 🇹🇼 (Traditional Chinese)</option>
+                        <option value="JP">Japan 🇯🇵 (Japanese)</option>
+                        <option value="US">United States 🇺🇸 (English)</option>
+                        <option value="CN">China 🇨🇳 (Simplified Chinese)</option>
+                        <option value="KR">South Korea 🇰🇷 (Korean)</option>
+                    </select>
+                </div>
+
+                <!-- Active Advice Section -->
+                <div id="advisor-interactive-section" style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 12px; margin-bottom: 14px; display: block;">
+                    <h3 style="font-size: 0.85rem; font-weight: 700; color: #166534; margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
+                        <span>💡</span> Local Expression Advisor
+                    </h3>
+                    <div id="advisor-prompt-text" style="font-size: 0.82rem; color: #1e293b; margin-bottom: 8px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;">
+                        Text to adapt: "..."
+                    </div>
+                    <button id="btn-get-local-advice" class="setting-select" style="background-color: var(--success-color); color: white; border: none; font-weight: 600; padding: 10px; font-size: 0.82rem; border-radius: 8px; cursor: pointer; transition: background-color 0.2s;">
+                        Ask Gemini for Local Native Phrase
+                    </button>
+                    <!-- Advice Results Container -->
+                    <div id="helper-advice-results" style="margin-top: 10px; font-size: 0.85rem; display: none; background: white; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; flex-direction: column; gap: 8px;"></div>
+                </div>
+
+                <!-- Presets list -->
+                <div style="flex-grow: 1; overflow-y: auto; padding-right: 2px;">
+                    <h3 style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.03em;">
+                        Quick Survival Phrases (すぐ使える表現)
+                    </h3>
+                    <div id="helper-presets-list" style="display: flex; flex-direction: column; gap: 8px;">
+                        <!-- JS populated presets -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Combined Scripts inside index.html -->
+    <script>
+        // --- SERVICES DEFINITION ---
+        const TranslationService = {
+            async translate(text, fromLang, toLang, engine = 'mymemory') {
+                const fromCode = this._mapLangCode(fromLang);
+                const toCode = this._mapLangCode(toLang);
+
+                switch (engine) {
+                    case 'gemini-mock':
+                        const geminiResult = await this._fetchMyMemory(text, fromCode, toCode);
+                        return `✨ [Gemini AI] ${geminiResult}`;
+                    case 'deepl-mock':
+                        const deeplResult = await this._fetchMyMemory(text, fromCode, toCode);
+                        return `💎 [DeepL] ${deeplResult}`;
+                    case 'mymemory':
+                    default:
+                        return await this._fetchMyMemory(text, fromCode, toCode);
+                }
+            },
+
+            // High-efficiency single-call translation using dynamic model selection
+            async translateMultiGemini(text, fromLang, toLangs, apiKey, modelName = 'gemini-2.0-flash') {
+                const fromName = this._getLanguageName(fromLang);
+                const targetsString = JSON.stringify(toLangs.map(l => ({ code: l, name: this._getLanguageName(l) })));
+                
+                const prompt = `You are a highly skilled professional translator. Translate the given source text from ${fromName} into the specified target languages. 
+Return the output strictly as a JSON object, where the keys are the target language codes and the values are the corresponding translations. 
+Do not include markdown code block syntax (like \`\`\`json), just return the raw JSON object string.
+
+Source text: "${text}"
+Source language: ${fromName} (code: ${fromLang})
+Target languages requested: ${targetsString}
+
+Example Output structure:
+{
+  "en": "Translated text",
+  "zh-TW": "翻譯文本",
+  "ko": "번역된 텍스트"
+}`;
+
+                const cachedApiVer = localStorage.getItem('geminiApiVersion') || 'v1beta';
+                const apiVersions = [cachedApiVer];
+                if (cachedApiVer === 'v1beta') {
+                    apiVersions.push('v1');
+                } else {
+                    apiVersions.push('v1beta');
+                }
+
+                let lastError = null;
+                for (const apiVer of apiVersions) {
+                    const url = `https://generativelanguage.googleapis.com/${apiVer}/models/${modelName}:generateContent?key=${apiKey}`;
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                contents: [{
+                                    parts: [{
+                                        text: prompt
+                                    }]
+                                }]
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({}));
+                            const errorMsg = errorData.error?.message || `HTTP error ${response.status}`;
+                            throw new Error(errorMsg);
+                        }
+
+                        const data = await response.json();
+                        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (!rawText) {
+                            throw new Error("No response text returned from Gemini API");
+                        }
+
+                        localStorage.setItem('geminiApiVersion', apiVer);
+
+                        let cleanJsonText = rawText.trim();
+                        if (cleanJsonText.startsWith("```")) {
+                            cleanJsonText = cleanJsonText.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "");
+                        }
+
+                        const translations = JSON.parse(cleanJsonText.trim());
+                        return translations;
+                    } catch (error) {
+                        console.warn(`Gemini API connection failed using ${apiVer}:`, error);
+                        lastError = error;
+                    }
+                }
+                throw lastError || new Error("Connection failed");
+            },
+
+            async testGeminiConnection(apiKey, modelName) {
+                const apiVersions = ['v1beta', 'v1'];
+                let lastError = null;
+                for (const apiVer of apiVersions) {
+                    const url = `https://generativelanguage.googleapis.com/${apiVer}/models/${modelName}:generateContent?key=${apiKey}`;
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{ parts: [{ text: "Respond only with the word 'OK' if you can read this." }] }]
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({}));
+                            throw new Error(errorData.error?.message || `HTTP ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (text) {
+                            localStorage.setItem('geminiApiVersion', apiVer);
+                            return { success: true, apiVer, text: text.trim() };
+                        }
+                        throw new Error("Empty response");
+                    } catch (e) {
+                        lastError = e;
+                    }
+                }
+                return { success: false, error: lastError?.message || "Connection failed" };
+            },
+
+            _mapLangCode(lang) {
+                if (lang === 'zh-CN') return 'zh';
+                if (lang === 'zh-TW') return 'zh-TW';
+                return lang;
+            },
+
+            _getLanguageName(code) {
+                const names = {
+                    'ja': 'Japanese',
+                    'en': 'English',
+                    'zh-CN': 'Chinese (Simplified)',
+                    'zh-TW': 'Chinese (Traditional, Taiwan)',
+                    'ko': 'Korean'
+                };
+                return names[code] || code;
+            },
+
+            async _fetchMyMemory(text, fromCode, toCode) {
+                try {
+                    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${fromCode}|${toCode}`;
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const data = await response.json();
+                    if (data.responseData && data.responseData.translatedText) {
+                        return data.responseData.translatedText;
+                    } else {
+                        throw new Error("Translation data missing");
+                    }
+                } catch (error) {
+                    console.error("MyMemory Fetch Error:", error);
+                    throw error;
+                }
+            }
+        };
+
+        const SpeechService = {
+            speak(text, langCode, voicePreset = 'default', onStart, onEnd, onError) {
+                if (!('speechSynthesis' in window)) {
+                    if (onError) onError(new Error("Text-to-speech not supported"));
+                    return;
+                }
+
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = langCode;
+
+                if (voicePreset === 'high-pitch') {
+                    utterance.pitch = 1.4;
+                    utterance.rate = 1.1;
+                } else if (voicePreset === 'deep-pitch') {
+                    utterance.pitch = 0.7;
+                    utterance.rate = 0.9;
+                } else {
+                    utterance.pitch = 1.0;
+                    utterance.rate = 1.0;
+                }
+
+                if (onStart) utterance.onstart = onStart;
+                if (onEnd) utterance.onend = onEnd;
+                if (onError) utterance.onerror = onError;
+
+                window.speechSynthesis.speak(utterance);
+            },
+
+            createRecognition(langCode, sttEngine = 'native', { onStart, onEnd, onResult, onError }) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) return null;
+
+                const recognition = new SpeechRecognition();
+                recognition.interimResults = false;
+                recognition.continuous = false;
+                recognition.lang = langCode;
+
+                if (onStart) recognition.onstart = onStart;
+                if (onEnd) recognition.onend = onEnd;
+                if (onError) recognition.onerror = onError;
+                
+                if (onResult) {
+                    recognition.onresult = (event) => {
+                        const resultText = event.results[0][0].transcript;
+                        if (sttEngine === 'whisper-mock') {
+                            onResult(`🎙️ [Whisper] ${resultText}`);
+                        } else {
+                            onResult(resultText);
+                        }
+                    };
+                }
+                return recognition;
+            }
+        };
+
+        // --- UI APPLICATION LOGIC ---
+        let currentInputLang = 'ja';
+        let isTypingMode = false;
+        
+        let sttEngine = localStorage.getItem('sttEngine') || 'native';
+        let transEngine = localStorage.getItem('transEngine') || 'mymemory';
+        let geminiApiKey = localStorage.getItem('geminiApiKey') || '';
+        let geminiModel = localStorage.getItem('geminiModel') || 'gemini-2.0-flash';
+        if (geminiModel === 'gemini-3-flash-preview') {
+            geminiModel = 'gemini-2.0-flash';
+            localStorage.setItem('geminiModel', geminiModel);
+        }
+        let ttsPreset = localStorage.getItem('ttsPreset') || 'default';
+
+        const languages = {
+            'ja': { name: 'Japanese', flag: '🇯🇵', speechCode: 'ja-JP' },
+            'en': { name: 'English', flag: '🇺🇸', speechCode: 'en-US' },
+            'zh-CN': { name: 'Chinese (Simplified)', flag: '🇨🇳', speechCode: 'zh-CN' },
+            'zh-TW': { name: 'Chinese (Traditional)', flag: '🇹🇼', speechCode: 'zh-TW' },
+            'ko': { name: 'Korean', flag: '🇰🇷', speechCode: 'ko-KR' }
+        };
+
+        // DOM Elements
+        const statusDisplay = document.getElementById('status-display');
+        const speakBtn = document.getElementById('speak-btn');
+        const speakBtnText = document.getElementById('speak-btn-text');
+        const speakBtnIcon = document.getElementById('speak-btn-icon');
+        
+        const settingsOverlay = document.getElementById('settings-overlay');
+        const openSettingsBtn = document.getElementById('open-settings-btn');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const selectSttEngine = document.getElementById('select-stt-engine');
+        const selectTransEngine = document.getElementById('select-trans-engine');
+        const inputGeminiKey = document.getElementById('input-gemini-key');
+        const geminiKeyGroup = document.getElementById('gemini-key-group');
+        const geminiModelGroup = document.getElementById('gemini-model-group');
+        const selectGeminiModel = document.getElementById('select-gemini-model');
+        const selectTtsPreset = document.getElementById('select-tts-preset');
+
+        // Travel Assistant DOM Elements
+        const openHelperBtn = document.getElementById('open-helper-btn');
+        const closeHelperBtn = document.getElementById('close-helper-btn');
+        const helperOverlay = document.getElementById('helper-overlay');
+        const selectCurrentLocation = document.getElementById('select-current-location');
+        const advisorInteractiveSection = document.getElementById('advisor-interactive-section');
+        const advisorPromptText = document.getElementById('advisor-prompt-text');
+        const btnGetLocalAdvice = document.getElementById('btn-get-local-advice');
+        const helperAdviceResults = document.getElementById('helper-advice-results');
+        const helperPresetsList = document.getElementById('helper-presets-list');
+
+        // Apply saved values to settings dropdowns/inputs
+        selectSttEngine.value = sttEngine;
+        selectTransEngine.value = transEngine;
+        inputGeminiKey.value = geminiApiKey;
+        selectGeminiModel.value = geminiModel;
+        selectTtsPreset.value = ttsPreset;
+
+        // Toggle Gemini input fields visibility based on engine selection
+        function toggleGeminiKeyVisibility() {
+            if (transEngine === 'gemini') {
+                geminiKeyGroup.style.display = 'block';
+                geminiModelGroup.style.display = 'block';
+            } else {
+                geminiKeyGroup.style.display = 'none';
+                geminiModelGroup.style.display = 'none';
+            }
+        }
+        toggleGeminiKeyVisibility();
+
+        const micIconPath = `<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>`;
+        const translateIconPath = `<path d="M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3zM9 3L5 6.99h3V14h2V6.99h3L9 3z"/>`;
+
+        let recognition = null;
+        let isListening = false;
+
+        function initRecognition() {
+            recognition = SpeechService.createRecognition(languages[currentInputLang].speechCode, sttEngine, {
+                onStart: () => {
+                    isListening = true;
+                    speakBtn.classList.add('listening');
+                    speakBtnText.innerText = "Listening";
+                    statusDisplay.innerText = `Listening... Speak in ${languages[currentInputLang].name}`;
+                    statusDisplay.classList.add('listening');
+                    document.getElementById(`card-${currentInputLang}`).classList.add('listening-pulse');
+                },
+                onEnd: () => {
+                    isListening = false;
+                    speakBtn.classList.remove('listening');
+                    speakBtnText.innerText = "SPEAK";
+                    statusDisplay.classList.remove('listening');
+                    document.getElementById(`card-${currentInputLang}`).classList.remove('listening-pulse');
+                    if (statusDisplay.innerText.startsWith("Listening...")) {
+                        statusDisplay.innerText = "Tap SPEAK to start or type in the active card";
+                    }
+                },
+                onResult: (resultText) => {
+                    const outputElement = document.getElementById(`out-${currentInputLang}`);
+                    outputElement.innerText = resultText;
+                    processTranslation(resultText, currentInputLang);
+                },
+                onError: (event) => {
+                    console.error("Speech recognition error:", event.error || event);
+                    statusDisplay.innerText = "Error: " + (event.error || "Recognition failed");
+                }
+            });
+
+            if (!recognition) {
+                speakBtn.style.display = 'none';
+                statusDisplay.innerText = "Speech recognition not supported on this browser. Type in the cards.";
+            }
+        }
+
+        // Setup Main Button Actions
+        speakBtn.addEventListener('mousedown', (e) => e.preventDefault());
+        speakBtn.addEventListener('click', handleMainButtonClick);
+
+        // Settings Modal Handlers
+        openSettingsBtn.addEventListener('click', () => {
+            fetchAvailableGeminiModels(geminiApiKey);
+            settingsOverlay.classList.add('open');
+        });
+
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsOverlay.classList.remove('open');
+            runEngineHealthChecks();
+        });
+
+        settingsOverlay.addEventListener('click', (e) => {
+            if (e.target === settingsOverlay) {
+                settingsOverlay.classList.remove('open');
+                runEngineHealthChecks();
+            }
+        });
+
+        // Save settings upon change
+        selectSttEngine.addEventListener('change', (e) => {
+            sttEngine = e.target.value;
+            localStorage.setItem('sttEngine', sttEngine);
+            statusDisplay.innerText = `Switched voice recognition engine to ${selectSttEngine.options[selectSttEngine.selectedIndex].text}`;
+            initRecognition();
+            runEngineHealthChecks();
+        });
+
+        selectTransEngine.addEventListener('change', (e) => {
+            transEngine = e.target.value;
+            localStorage.setItem('transEngine', transEngine);
+            toggleGeminiKeyVisibility();
+            statusDisplay.innerText = `Switched translation engine to ${selectTransEngine.options[selectTransEngine.selectedIndex].text}`;
+            if (transEngine === 'gemini') {
+                fetchAvailableGeminiModels(geminiApiKey);
+            }
+            runEngineHealthChecks();
+        });
+
+        inputGeminiKey.addEventListener('input', (e) => {
+            geminiApiKey = e.target.value.trim();
+            localStorage.setItem('geminiApiKey', geminiApiKey);
+            document.getElementById('gemini-test-status').style.display = 'none';
+            fetchAvailableGeminiModels(geminiApiKey);
+            runEngineHealthChecks();
+        });
+
+        const btnTestGemini = document.getElementById('btn-test-gemini');
+        const geminiTestStatus = document.getElementById('gemini-test-status');
+
+        btnTestGemini.addEventListener('click', async () => {
+            if (!geminiApiKey) {
+                geminiTestStatus.style.display = 'block';
+                geminiTestStatus.style.backgroundColor = '#fee2e2';
+                geminiTestStatus.style.color = '#991b1b';
+                geminiTestStatus.innerText = "Error: API key is empty.";
+                return;
+            }
+
+            btnTestGemini.disabled = true;
+            btnTestGemini.innerText = "...";
+            geminiTestStatus.style.display = 'block';
+            geminiTestStatus.style.backgroundColor = '#f1f5f9';
+            geminiTestStatus.style.color = '#334155';
+            geminiTestStatus.innerText = "Connecting to Gemini API...";
+
+            const testResult = await TranslationService.testGeminiConnection(geminiApiKey, geminiModel);
+
+            btnTestGemini.disabled = false;
+            btnTestGemini.innerText = "Test";
+
+            if (testResult.success) {
+                geminiTestStatus.style.backgroundColor = '#dcfce7';
+                geminiTestStatus.style.color = '#166534';
+                geminiTestStatus.innerHTML = `🟢 <strong>Connection Success!</strong><br>API Version: <code>${testResult.apiVer}</code><br>Response: "${testResult.text}"`;
+                // Dynamically refresh models list upon successful connection test
+                await fetchAvailableGeminiModels(geminiApiKey);
+            } else {
+                geminiTestStatus.style.backgroundColor = '#fee2e2';
+                geminiTestStatus.style.color = '#991b1b';
+                geminiTestStatus.innerHTML = `🔴 <strong>Connection Failed</strong><br>Error: ${testResult.error}`;
+            }
+        });
+
+        selectGeminiModel.addEventListener('change', (e) => {
+            // No-op: model is auto-detected. Hidden select kept for JS compatibility.
+        });
+
+        selectTtsPreset.addEventListener('change', (e) => {
+            ttsPreset = e.target.value;
+            localStorage.setItem('ttsPreset', ttsPreset);
+            statusDisplay.innerText = `Switched speech preset to ${selectTtsPreset.options[selectTtsPreset.selectedIndex].text}`;
+        });
+
+        // Active Language Switcher (Card click)
+        window.setLanguage = function(lang) {
+            if (currentInputLang === lang && !isTypingMode) return;
+            
+            document.querySelectorAll('.card').forEach(card => card.classList.remove('active-input'));
+            
+            Object.keys(languages).forEach(key => {
+                document.getElementById(`icon-${key}`).innerText = languages[key].flag;
+                document.getElementById(`title-${key}`).innerText = languages[key].name;
+            });
+
+            currentInputLang = lang;
+            const activeCard = document.getElementById(`card-${lang}`);
+            activeCard.classList.add('active-input');
+
+            document.getElementById(`icon-${lang}`).innerText = '🎙️';
+            document.getElementById(`title-${lang}`).innerText = `${languages[lang].name} (You)`;
+
+            statusDisplay.innerText = `Ready to translate from ${languages[lang].name}`;
+            
+            if (isListening && recognition) {
+                recognition.stop();
+            }
+            
+            initRecognition();
+        };
+
+        // Main dispatcher
+        function handleMainButtonClick() {
+            if (isTypingMode) {
+                const activeText = document.getElementById(`out-${currentInputLang}`).innerText.trim();
+                if (activeText) {
+                    processTranslation(activeText, currentInputLang);
+                }
+                document.activeElement.blur();
+            } else {
+                // Preemptively cancel speech synthesis to unlock the microphone on iOS/Safari
+                if (window.speechSynthesis) {
+                    window.speechSynthesis.cancel();
+                }
+
+                if (!recognition) {
+                    initRecognition();
+                }
+
+                if (!recognition) {
+                    statusDisplay.innerText = "Speech recognition is not supported on this browser.";
+                    return;
+                }
+
+                if (isListening) {
+                    recognition.stop();
+                } else {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.error("Failed to start speech recognition:", e);
+                        statusDisplay.innerText = "Failed to start mic: " + e.message;
+                    }
+                }
+            }
+        }
+
+        // Bind contenteditable triggers
+        Object.keys(languages).forEach(lang => {
+            const el = document.getElementById(`out-${lang}`);
+            
+            el.addEventListener('focus', () => {
+                setLanguage(lang);
+                isTypingMode = true;
+                speakBtn.classList.add('translate-mode');
+                speakBtnText.innerText = "TRANSLATE";
+                speakBtnIcon.innerHTML = translateIconPath;
+                statusDisplay.innerText = `Typing in ${languages[lang].name}... Press ENTER or click TRANSLATE.`;
+                statusDisplay.classList.add('typing');
+            });
+
+            el.addEventListener('blur', () => {
+                setTimeout(() => {
+                    if (document.activeElement.getAttribute('contenteditable') !== "true") {
+                        isTypingMode = false;
+                        speakBtn.classList.remove('translate-mode');
+                        speakBtnText.innerText = "SPEAK";
+                        speakBtnIcon.innerHTML = micIconPath;
+                        statusDisplay.classList.remove('typing');
+                        if (statusDisplay.innerText.startsWith("Typing")) {
+                            statusDisplay.innerText = "Tap SPEAK to start or type in the active card";
+                        }
+                    }
+                }, 150);
+            });
+
+            el.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    el.blur();
+                    const text = el.innerText.trim();
+                    if (text) {
+                        processTranslation(text, lang);
+                    }
+                }
+            });
+        });
+
+        // Parallel / Single-call Translation Dispatcher
+        async function processTranslation(text, fromLang) {
+            // Highlight base language source card
+            document.querySelectorAll('.card').forEach(card => card.classList.remove('translation-source'));
+            const sourceCard = document.getElementById(`card-${fromLang}`);
+            if (sourceCard) {
+                sourceCard.classList.add('translation-source');
+            }
+
+            // Strip engine prefix markers to avoid marker accumulation
+            let cleanText = text.replace(/^✨\s*\[Gemini\s*AI\]\s*/i, "");
+            cleanText = cleanText.replace(/^💎\s*\[DeepL\]\s*/i, "");
+            cleanText = cleanText.replace(/^🎙️\s*\[Whisper\]\s*/i, "");
+
+            statusDisplay.innerText = "⚡ Translating...";
+            const targets = Object.keys(languages).filter(lang => lang !== fromLang);
+            
+            // Set loading text for target cards
+            targets.forEach(toLang => {
+                document.getElementById(`out-${toLang}`).innerText = "⚡ ...";
+            });
+
+            // A. High-efficiency Single Call Gemini Translation
+            if (transEngine === 'gemini' && geminiApiKey) {
+                try {
+                    const translationsObj = await TranslationService.translateMultiGemini(cleanText, fromLang, targets, geminiApiKey, geminiModel);
+                    
+                    targets.forEach(toLang => {
+                        const translation = translationsObj[toLang] || translationsObj[toLang.toLowerCase()] || translationsObj[toLang.replace('-', '')];
+                        const outputElement = document.getElementById(`out-${toLang}`);
+                        if (translation) {
+                            outputElement.innerText = translation;
+                        } else {
+                            outputElement.innerText = "[Missing Translation]";
+                        }
+                    });
+                    
+                    statusDisplay.innerText = `Translated using Google Gemini AI (${selectGeminiModel.options[selectGeminiModel.selectedIndex].text})`;
+                    saveToHistory(cleanText, fromLang);
+                    return;
+                } catch (e) {
+                    console.error("Gemini Multi-translation failed, falling back to MyMemory API:", e);
+                    logDebug(`[Gemini Translation Error] ${e.message}`);
+                    statusDisplay.innerText = `Gemini API Error. MyMemoryにフォールバック中...`;
+                }
+            } else if (transEngine === 'gemini' && !geminiApiKey) {
+                statusDisplay.innerText = "Please enter your Gemini API Key in Settings. Falling back to MyMemory...";
+                logDebug('[Gemini] API Key is not set. Falling back to MyMemory.');
+            }
+
+            // B. Default Fallback / Standard Parallel Translation
+            const promises = targets.map(async (toLang) => {
+                const outputElement = document.getElementById(`out-${toLang}`);
+                try {
+                    const translatedText = await TranslationService.translate(cleanText, fromLang, toLang, transEngine === 'gemini' ? 'mymemory' : transEngine);
+                    outputElement.innerText = translatedText;
+                } catch (e) {
+                    outputElement.innerText = "[Error]";
+                    logDebug(`[MyMemory Error] ${fromLang}->${toLang}: ${e.message}`);
+                }
+            });
+
+            await Promise.all(promises);
+            const activeEngineName = transEngine === 'gemini' ? 'MyMemory (Fallback)' : selectTransEngine.options[selectTransEngine.selectedIndex].text;
+            if (!statusDisplay.innerText.includes('Gemini API Error')) {
+                statusDisplay.innerText = `Translation completed (${activeEngineName})`;
+            }
+            saveToHistory(cleanText, fromLang);
+        }
+
+        // --- HISTORY STORAGE & UI MANAGEMENT ---
+        function saveToHistory(text, fromLang) {
+            if (!text || text.startsWith("⚡") || text.startsWith("[") || text.trim() === "") return;
+            let history = JSON.parse(localStorage.getItem('translationHistory') || '[]');
+            
+            // Check to avoid consecutive duplicate records
+            if (history.length > 0 && history[0].text === text && history[0].lang === fromLang) return;
+            
+            history.unshift({
+                lang: fromLang,
+                text: text,
+                timestamp: Date.now()
+            });
+            
+            if (history.length > 30) history.pop(); // Keep up to 30 records
+            localStorage.setItem('translationHistory', JSON.stringify(history));
+        }
+
+        const historyOverlay = document.getElementById('history-overlay');
+        const openHistoryBtn = document.getElementById('open-history-btn');
+        const closeHistoryBtn = document.getElementById('close-history-btn');
+        const historyListContainer = document.getElementById('history-list-container');
+        const clearHistoryDbBtn = document.getElementById('clear-history-db-btn');
+        const clearAllBtn = document.getElementById('clear-all-btn');
+
+        // Toggle History overlay
+        openHistoryBtn.addEventListener('click', () => {
+            renderHistory();
+            historyOverlay.classList.add('open');
+        });
+
+        closeHistoryBtn.addEventListener('click', () => {
+            historyOverlay.classList.remove('open');
+        });
+
+        historyOverlay.addEventListener('click', (e) => {
+            if (e.target === historyOverlay) {
+                historyOverlay.classList.remove('open');
+            }
+        });
+
+        // Clear local storage history
+        clearHistoryDbBtn.addEventListener('click', () => {
+            localStorage.setItem('translationHistory', '[]');
+            renderHistory();
+        });
+
+        // --- TRAVEL ASSISTANT LOGIC ---
+        const travelPresets = {
+            'TW': [
+                { phrase: '請問，捷運站在哪裡？', definition: 'Excuse me, where is the MRT station?' },
+                { phrase: '謝謝，不用了。', definition: 'Thank you, no need.' },
+                { phrase: '買單，謝謝。', definition: 'The bill, please. Thank you.' },
+                { phrase: '這個多少錢？', definition: 'How much is this?' },
+                { phrase: '請問有推薦的菜嗎？', definition: 'Do you have any recommended dishes?' },
+                { phrase: '這附近有超商嗎？', definition: 'Is there a convenience store nearby?' }
+            ],
+            'JP': [
+                { phrase: 'すみません、駅はどこですか？', definition: 'Excuse me, where is the station?' },
+                { phrase: 'ありがとう、大丈夫です。', definition: 'Thank you, I\'m fine.' },
+                { phrase: 'お会計お願いします。', definition: 'The bill, please.' },
+                { phrase: 'これはいくらですか？', definition: 'How much is this?' },
+                { phrase: 'おすすめの料理はありますか？', definition: 'Do you have any recommended dishes?' },
+                { phrase: '近くにコンビニはありますか？', definition: 'Is there a convenience store nearby?' }
+            ],
+            'US': [
+                { phrase: 'Excuse me, where is the subway station?', definition: '駅/地下鉄の駅はどこですか？' },
+                { phrase: 'Thank you, I\'m good.', definition: 'ありがとう、大丈夫です。' },
+                { phrase: 'Check, please.', definition: 'お会計をお願いします。' },
+                { phrase: 'How much is this?', definition: 'これはいくらですか？' },
+                { phrase: 'What do you recommend?', definition: 'おすすめは何ですか？' },
+                { phrase: 'Is there a convenience store nearby?', definition: '近くにコンビニはありますか？' }
+            ],
+            'CN': [
+                { phrase: '请问，地铁站在哪里？', definition: 'Excuse me, where is the subway station?' },
+                { phrase: '谢谢，不用了。', definition: 'Thank you, no need.' },
+                { phrase: '买单，谢谢。', definition: 'The bill, please. Thank you.' },
+                { phrase: '这个多少钱？', definition: 'How much is this?' },
+                { phrase: '有什么推荐的菜吗？', definition: 'Do you have any recommended dishes?' },
+                { phrase: '这附近有便利店吗？', definition: 'Is there a convenience store nearby?' }
+            ],
+            'KR': [
+                { phrase: '실례합니다, 지하철역이 어디예요?', definition: 'Excuse me, where is the subway station?' },
+                { phrase: '괜찮습니다, 감사합니다.', definition: 'Thank you, I\'m fine.' },
+                { phrase: '계산해 주세요.', definition: 'The bill, please.' },
+                { phrase: '이거 얼마예요?', definition: 'How much is this?' },
+                { phrase: '추천 메뉴가 뭐예요?', definition: 'Do you have any recommended dishes?' },
+                { phrase: '근처에 편의점이 있어요?', definition: 'Is there a convenience store nearby?' }
+            ]
+        };
+
+        const locationLangMap = {
+            'TW': 'zh-TW',
+            'JP': 'ja',
+            'US': 'en',
+            'CN': 'zh-CN',
+            'KR': 'ko'
+        };
+
+        const locationNames = {
+            'TW': 'Taiwan 🇹🇼',
+            'JP': 'Japan 🇯🇵',
+            'US': 'United States 🇺🇸',
+            'CN': 'China 🇨🇳',
+            'KR': 'South Korea 🇰🇷'
+        };
+
+        openHelperBtn.addEventListener('click', () => {
+            updateTravelAssistantUI();
+            helperOverlay.classList.add('open');
+        });
+
+        closeHelperBtn.addEventListener('click', () => {
+            helperOverlay.classList.remove('open');
+        });
+
+        helperOverlay.addEventListener('click', (e) => {
+            if (e.target === helperOverlay) {
+                helperOverlay.classList.remove('open');
+            }
+        });
+
+        selectCurrentLocation.addEventListener('change', () => {
+            updateTravelAssistantUI();
+        });
+
+        function updateTravelAssistantUI() {
+            const loc = selectCurrentLocation.value;
+            const targetLang = locationLangMap[loc];
+            const presets = travelPresets[loc] || [];
+            
+            // Render presets
+            helperPresetsList.innerHTML = '';
+            presets.forEach(p => {
+                const row = document.createElement('div');
+                row.style.backgroundColor = '#f8fafc';
+                row.style.border = '1px solid #e2e8f0';
+                row.style.borderRadius = '10px';
+                row.style.padding = '8px 12px';
+                row.style.display = 'flex';
+                row.style.justifyContent = 'space-between';
+                row.style.alignItems = 'center';
+                row.style.gap = '8px';
+
+                row.innerHTML = `
+                    <div style="flex-grow: 1; min-width: 0;">
+                        <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-dark); word-break: break-all;">${p.phrase}</div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted);">${p.definition}</div>
+                    </div>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="action-icon" title="Listen" style="padding: 4px; opacity: 0.8;" onclick="window.speakTextHelper('${targetLang}', '${p.phrase.replace(/'/g, "\\'")}', event)">🔊</button>
+                        <button class="action-icon" title="Apply" style="padding: 4px; opacity: 0.8; color: var(--primary-color);" onclick="window.applyHelperPhrase('${targetLang}', '${p.phrase.replace(/'/g, "\\'")}', event)">✏️</button>
+                    </div>
+                `;
+                helperPresetsList.appendChild(row);
+            });
+
+            // Handle interactive advisor text
+            let activeText = document.getElementById(`out-${currentInputLang}`)?.innerText.trim() || '';
+            let detectedFromLang = currentInputLang;
+
+            // Fallback: If currently active input card is empty, search other cards for typed/translated text
+            if (!activeText || activeText.startsWith("⚡") || activeText.startsWith("[")) {
+                for (const lang of Object.keys(languages)) {
+                    const txt = document.getElementById(`out-${lang}`)?.innerText.trim() || '';
+                    if (txt && !txt.startsWith("⚡") && !txt.startsWith("[")) {
+                        activeText = txt;
+                        detectedFromLang = lang;
+                        break;
+                    }
+                }
+            }
+
+            // Always display the advisor section
+            advisorInteractiveSection.style.display = 'block';
+
+            if (activeText && !activeText.startsWith("⚡") && !activeText.startsWith("[")) {
+                advisorPromptText.innerText = `Adapt text for ${locationNames[loc]}: "${activeText}"`;
+                advisorInteractiveSection.setAttribute('data-source-lang', detectedFromLang);
+                btnGetLocalAdvice.disabled = false;
+                btnGetLocalAdvice.style.opacity = '1';
+                btnGetLocalAdvice.style.cursor = 'pointer';
+            } else {
+                advisorPromptText.innerText = '⚠️ メイン画面に言葉を入力（またはマイクで発言）してから開くと、現地表現に変換できます。';
+                advisorInteractiveSection.setAttribute('data-source-lang', '');
+                btnGetLocalAdvice.disabled = true;
+                btnGetLocalAdvice.style.opacity = '0.5';
+                btnGetLocalAdvice.style.cursor = 'not-allowed';
+                helperAdviceResults.style.display = 'none';
+                helperAdviceResults.innerHTML = '';
+            }
+        }
+
+        window.speakTextHelper = function(lang, text, event) {
+            if (event) event.stopPropagation();
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+            SpeechService.speak(text, languages[lang].speechCode, ttsPreset);
+        };
+
+        window.applyHelperPhrase = function(lang, text, event) {
+            if (event) event.stopPropagation();
+            helperOverlay.classList.remove('open');
+            setLanguage(lang);
+            document.getElementById(`out-${lang}`).innerText = text;
+            processTranslation(text, lang);
+        };
+
+        // Gemini AI active location advisor integration
+        btnGetLocalAdvice.addEventListener('click', async () => {
+            const loc = selectCurrentLocation.value;
+            const targetLang = locationLangMap[loc];
+            const sourceLang = advisorInteractiveSection.getAttribute('data-source-lang') || currentInputLang;
+            const activeText = document.getElementById(`out-${sourceLang}`)?.innerText.trim() || '';
+            if (!activeText) {
+                alert("Please ensure you have text in the active card.");
+                return;
+            }
+
+            btnGetLocalAdvice.disabled = true;
+            btnGetLocalAdvice.innerText = "...";
+            helperAdviceResults.style.display = 'flex';
+            helperAdviceResults.innerHTML = '<div style="color: #64748b; text-align: center;">⚡ Consulting local assistant...</div>';
+
+            const locName = locationNames[loc];
+            const fromLangName = languages[sourceLang]?.name || sourceLang;
+            const targetLangName = languages[targetLang].name;
+
+            // If API key is missing, fallback to presets
+            if (!geminiApiKey) {
+                const presets = travelPresets[loc] || [];
+                if (presets.length > 0) {
+                    const presetPhrase = presets[0].phrase;
+                    helperAdviceResults.innerHTML = `
+                        <div style="font-weight: 700; color: var(--success-color); font-size: 0.9rem;">${presetPhrase}</div>
+                        <div style="color: var(--text-muted); font-size: 0.75rem;">[Gemini API key is not configured. Showing preset fallback.]</div>
+                        <div style="display: flex; gap: 8px; margin-top: 4px;">
+                            <button class="setting-select" style="padding: 6px 12px; background-color: var(--success-color); color: white; border: none; font-size: 0.75rem; border-radius: 6px; cursor: pointer;" onclick="window.speakTextHelper('${targetLang}', '${presetPhrase.replace(/'/g, "\\'")}', event)">🔊 Speak</button>
+                            <button class="setting-select" style="padding: 6px 12px; background-color: var(--primary-color); color: white; border: none; font-size: 0.75rem; border-radius: 6px; cursor: pointer;" onclick="window.applyHelperPhrase('${targetLang}', '${presetPhrase.replace(/'/g, "\\'")}', event)">✏️ Apply</button>
+                        </div>
+                    `;
+                } else {
+                    helperAdviceResults.innerHTML = `<div style="color: var(--danger-color);">Please set Gemini API Key in Settings first.</div>`;
+                }
+                btnGetLocalAdvice.disabled = false;
+                btnGetLocalAdvice.innerText = "Ask Gemini for Local Native Phrase";
+                return;
+            }
+
+            const prompt = `You are a local helper in ${locName}. The traveler wants to say: "${activeText}" (written in ${fromLangName}).
+Translate this into ${targetLangName} (language code: ${targetLang}) but rewrite it using the most common local slang, colloquialism, regional terminology, or local phrasing that native speakers in ${locName} actually use in real life.
+For example, if in Taiwan, use Traditional Chinese characters and local terms (like MRT '捷運' instead of '地鐵').
+Provide ONLY the final local expression string itself. Do NOT include any explanations, surrounding quotes, notes, markdown formatting, or introductory text. Just output the expression itself.`;
+
+            try {
+                const cachedApiVer = localStorage.getItem('geminiApiVersion') || 'v1beta';
+                const apiVersions = [cachedApiVer, cachedApiVer === 'v1beta' ? 'v1' : 'v1beta'];
+                
+                let rawText = '';
+                let success = false;
+                let lastError = null;
+
+                for (const apiVer of apiVersions) {
+                    const url = `https://generativelanguage.googleapis.com/${apiVer}/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                        });
+                        if (response.ok) {
+                            const data = await response.json();
+                            rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                            if (rawText) {
+                                localStorage.setItem('geminiApiVersion', apiVer);
+                                success = true;
+                                break;
+                            }
+                        } else {
+                            const errData = await response.json().catch(() => ({}));
+                            lastError = new Error(errData.error?.message || `HTTP ${response.status}`);
+                        }
+                    } catch (e) {
+                        lastError = e;
+                    }
+                }
+
+                if (!success) {
+                    throw lastError || new Error("Failed to contact Gemini API");
+                }
+
+                let finalPhrase = rawText.trim();
+                if (finalPhrase.startsWith("```")) {
+                    finalPhrase = finalPhrase.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "").trim();
+                }
+                if (finalPhrase.startsWith('"') && finalPhrase.endsWith('"')) {
+                    finalPhrase = finalPhrase.slice(1, -1);
+                } else if (finalPhrase.startsWith('「') && finalPhrase.endsWith('」')) {
+                    finalPhrase = finalPhrase.slice(1, -1);
+                }
+
+                helperAdviceResults.innerHTML = `
+                    <div style="font-weight: 700; color: var(--success-color); font-size: 0.95rem;">${finalPhrase}</div>
+                    <div style="display: flex; gap: 8px; margin-top: 6px;">
+                        <button class="setting-select" style="padding: 6px 12px; background-color: var(--success-color); color: white; border: none; font-size: 0.75rem; border-radius: 6px; cursor: pointer;" onclick="window.speakTextHelper('${targetLang}', '${finalPhrase.replace(/'/g, "\\'")}', event)">🔊 Speak</button>
+                        <button class="setting-select" style="padding: 6px 12px; background-color: var(--primary-color); color: white; border: none; font-size: 0.75rem; border-radius: 6px; cursor: pointer;" onclick="window.applyHelperPhrase('${targetLang}', '${finalPhrase.replace(/'/g, "\\'")}', event)">✏️ Apply</button>
+                    </div>
+                `;
+            } catch (error) {
+                console.error("Helper advice error:", error);
+                helperAdviceResults.innerHTML = `<div style="color: var(--danger-color);">Error: ${error.message}</div>`;
+            } finally {
+                btnGetLocalAdvice.disabled = false;
+                btnGetLocalAdvice.innerText = "Ask Gemini for Local Native Phrase";
+            }
+        });
+
+        clearAllBtn.addEventListener('click', () => {
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+            if (isListening && recognition) {
+                recognition.stop();
+            }
+            document.querySelectorAll('.card').forEach(card => card.classList.remove('translation-source'));
+            Object.keys(languages).forEach(lang => {
+                const el = document.getElementById(`out-${lang}`);
+                if (el) el.innerText = '';
+            });
+            statusDisplay.innerText = "Next Chat ready. Select active card and SPEAK.";
+            statusDisplay.classList.remove('listening', 'typing');
+        });
+
+        function renderHistory() {
+            const history = JSON.parse(localStorage.getItem('translationHistory') || '[]');
+            historyListContainer.innerHTML = '';
+            
+            if (history.length === 0) {
+                historyListContainer.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px; font-style: italic; font-size: 0.9rem;">No translation history yet.</div>';
+                return;
+            }
+
+            history.forEach((item) => {
+                const langInfo = languages[item.lang] || { name: item.lang, flag: '🌐' };
+                const timeString = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                const itemDiv = document.createElement('div');
+                itemDiv.style.backgroundColor = '#f8fafc';
+                itemDiv.style.border = '1px solid #e2e8f0';
+                itemDiv.style.borderRadius = '12px';
+                itemDiv.style.padding = '12px 14px';
+                itemDiv.style.cursor = 'pointer';
+                itemDiv.style.transition = 'all 0.2s';
+                itemDiv.style.display = 'flex';
+                itemDiv.style.flexDirection = 'column';
+                itemDiv.style.gap = '4px';
+
+                itemDiv.addEventListener('mouseenter', () => {
+                    itemDiv.style.backgroundColor = '#f1f5f9';
+                    itemDiv.style.borderColor = 'var(--primary-color)';
+                });
+                itemDiv.addEventListener('mouseleave', () => {
+                    itemDiv.style.backgroundColor = '#f8fafc';
+                    itemDiv.style.borderColor = '#e2e8f0';
+                });
+
+                itemDiv.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; font-weight: 600; color: var(--text-muted);">
+                        <span>${langInfo.flag} ${langInfo.name}</span>
+                        <span>${timeString}</span>
+                    </div>
+                    <div style="font-size: 0.9rem; color: var(--text-dark); word-break: break-word; font-weight: 500;">
+                        ${escapeHtml(item.text)}
+                    </div>
+                `;
+
+                itemDiv.addEventListener('click', () => {
+                    setLanguage(item.lang);
+                    document.getElementById(`out-${item.lang}`).innerText = item.text;
+                    historyOverlay.classList.remove('open');
+                    processTranslation(item.text, item.lang);
+                });
+
+                historyListContainer.appendChild(itemDiv);
+            });
+        }
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Voice Synthesizer with reactive visual glow
+        let speechAnimFrameId = null;
+        window.speakText = function(lang, event) {
+            if (event) event.stopPropagation();
+
+            let text = document.getElementById(`out-${lang}`).innerText.trim();
+            if (!text || text.startsWith("⚡") || text.startsWith("[") || text === "") return;
+
+            // Strip prefix markers before reading aloud so it sounds natural
+            text = text.replace(/^✨\s*\[Gemini\s*AI\]\s*/i, "");
+            text = text.replace(/^💎\s*\[DeepL\]\s*/i, "");
+            text = text.replace(/^🎙️\s*\[Whisper\]\s*/i, "");
+
+            const cardElement = document.getElementById(`card-${lang}`);
+
+            function animateReactiveGlow() {
+                if (window.speechSynthesis.speaking) {
+                    const time = Date.now() * 0.015;
+                    const baseline = Math.sin(time) * 0.35 + 0.65;
+                    const peaks = Math.random() * 0.15;
+                    const dynamicValue = Math.min(1.0, Math.max(0.2, baseline + peaks));
+                    
+                    cardElement.style.setProperty('--speaking-glow-opacity', dynamicValue);
+                    cardElement.style.setProperty('--speaking-glow-spread', `${12 + dynamicValue * 18}px`);
+                    
+                    speechAnimFrameId = requestAnimationFrame(animateReactiveGlow);
+                } else {
+                    cleanSpeakingEffects(cardElement);
+                }
+            }
+
+            function cleanSpeakingEffects(element) {
+                element.classList.remove('speaking');
+                element.style.removeProperty('--speaking-glow-opacity');
+                element.style.removeProperty('--speaking-glow-spread');
+                statusDisplay.innerText = "Tap SPEAK to start or type in the active card";
+            }
+
+            try {
+                SpeechService.speak(
+                    text,
+                    languages[lang].speechCode,
+                    ttsPreset,
+                    // onStart
+                    () => {
+                        document.querySelectorAll('.card').forEach(cleanSpeakingEffects);
+                        if (speechAnimFrameId) cancelAnimationFrame(speechAnimFrameId);
+                        
+                        cardElement.classList.add('speaking');
+                        statusDisplay.innerText = `📣 Speaking in ${languages[lang].name}...`;
+                        animateReactiveGlow();
+                    },
+                    // onEnd
+                    () => {
+                        cleanSpeakingEffects(cardElement);
+                    },
+                    // onError
+                    (err) => {
+                        console.error(err);
+                        cleanSpeakingEffects(cardElement);
+                    }
+                );
+            } catch (error) {
+                alert(error.message);
+            }
+        };
+
+        // Initialize App State
+        setLanguage('ja');
+
+        // Text-to-Speech event bindings (direct listener attachment fallback)
+        Object.keys(languages).forEach(lang => {
+            const btn = document.getElementById(`btn-speak-${lang}`);
+            if (btn) {
+                btn.addEventListener('click', (e) => {
+                    window.speakText(lang, e);
+                });
+            }
+        });
+
+        // --- Local Phrase Assistant Event Bindings ---
+        const btnGetLocal = document.getElementById('btn-get-local');
+        const outRecommend = document.getElementById('out-recommend');
+        const btnSpeakRecommend = document.getElementById('btn-speak-recommend');
+
+        if (btnGetLocal) {
+            btnGetLocal.addEventListener('click', async () => {
+                // Get the text from the active (currently selected) input language card
+                const activeCardText = document.getElementById(`out-${currentInputLang}`)?.innerText.trim() || '';
+                
+                if (!activeCardText) {
+                    outRecommend.innerText = '❌ ソーステキスト（現在選択中のカードのテキスト）を入力してください。';
+                    outRecommend.style.color = 'var(--danger-color)';
+                    btnSpeakRecommend.style.display = 'none';
+                    return;
+                }
+
+                btnGetLocal.disabled = true;
+                btnGetLocal.innerText = 'Consulting...';
+                outRecommend.innerText = '⚡ AIが現地で最もよく使う言葉を探しています...';
+                outRecommend.style.color = 'var(--success-color)';
+                btnSpeakRecommend.style.display = 'none';
+
+                const loc = document.getElementById('recommend-location').value;
+                const targetLang = locationLangMap[loc];
+                const locName = locationNames[loc];
+                const fromLangName = languages[currentInputLang]?.name || currentInputLang;
+                const targetLangName = languages[targetLang]?.name || targetLang;
+
+                // If Gemini is not set, use travelPresets fallback
+                if (!geminiApiKey) {
+                    const presets = travelPresets[loc] || [];
+                    if (presets.length > 0) {
+                        outRecommend.innerText = presets[0].phrase;
+                        btnSpeakRecommend.style.display = 'block';
+                    } else {
+                        outRecommend.innerText = '❌ Gemini APIキーが設定されていません。';
+                        outRecommend.style.color = 'var(--danger-color)';
+                    }
+                    btnGetLocal.disabled = false;
+                    btnGetLocal.innerText = 'Ask AI';
+                    return;
+                }
+
+                const prompt = `You are a local helper in ${locName}. The traveler wants to say: "${activeCardText}" (written in ${fromLangName}).
+Translate this into ${targetLangName} (language code: ${targetLang}) but rewrite it using the most common local slang, colloquialism, regional terminology, or local phrasing that native speakers in ${locName} actually use in real life.
+For example, if in Taiwan, use Traditional Chinese characters and local terms (like MRT '捷運' instead of '地鐵').
+Provide ONLY the final local expression string itself. Do NOT include any explanations, surrounding quotes, notes, markdown formatting, or introductory text. Just output the expression itself.`;
+
+                try {
+                    const cachedApiVer = localStorage.getItem('geminiApiVersion') || 'v1beta';
+                    const apiVersions = [cachedApiVer, cachedApiVer === 'v1beta' ? 'v1' : 'v1beta'];
+                    
+                    let rawText = '';
+                    let success = false;
+                    let lastError = null;
+
+                    for (const apiVer of apiVersions) {
+                        const url = `https://generativelanguage.googleapis.com/${apiVer}/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
+                        try {
+                            const response = await fetch(url, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                            });
+                            if (response.ok) {
+                                const data = await response.json();
+                                rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                                if (rawText) {
+                                    localStorage.setItem('geminiApiVersion', apiVer);
+                                    success = true;
+                                    break;
+                                }
+                            } else {
+                                const errData = await response.json().catch(() => ({}));
+                                lastError = new Error(errData.error?.message || `HTTP ${response.status}`);
+                            }
+                        } catch (e) {
+                            lastError = e;
+                        }
+                    }
+
+                    if (!success) throw lastError || new Error("Failed to contact Gemini API");
+
+                    let finalPhrase = rawText.trim();
+                    if (finalPhrase.startsWith("```")) {
+                        finalPhrase = finalPhrase.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "").trim();
+                    }
+                    if (finalPhrase.startsWith('"') && finalPhrase.endsWith('"')) finalPhrase = finalPhrase.slice(1, -1);
+                    if (finalPhrase.startsWith('「') && finalPhrase.endsWith('」')) finalPhrase = finalPhrase.slice(1, -1);
+
+                    outRecommend.innerText = finalPhrase;
+                    outRecommend.style.color = 'var(--success-color)';
+                    btnSpeakRecommend.style.display = 'block';
+                } catch (err) {
+                    console.error("Local Assistant Error:", err);
+                    outRecommend.innerText = `❌ エラー: ${err.message}`;
+                    outRecommend.style.color = 'var(--danger-color)';
+                    btnSpeakRecommend.style.display = 'none';
+                    logDebug(`[Local Assistant Error] ${err.message}`);
+                } finally {
+                    btnGetLocal.disabled = false;
+                    btnGetLocal.innerText = 'Ask AI';
+                }
+            });
+        }
+
+        if (btnSpeakRecommend) {
+            btnSpeakRecommend.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const loc = document.getElementById('recommend-location').value;
+                const lang = locationLangMap[loc];
+                const text = outRecommend.innerText.trim();
+                if (!text || text.startsWith("❌") || text.startsWith("⚡") || text.includes("ソーステキストを入力")) return;
+                
+                if (window.speechSynthesis) window.speechSynthesis.cancel();
+                SpeechService.speak(text, languages[lang].speechCode, ttsPreset);
+            });
+        }
+
+        // --- Debug Log Console ---
+        function logDebug(message) {
+            const console_el = document.getElementById('debug-log-console');
+            if (!console_el) return;
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            // Clear placeholder text on first real log
+            if (console_el.textContent === 'No logs yet.') console_el.textContent = '';
+            console_el.textContent += `[${timestamp}] ${message}\n`;
+            // Keep max 50 lines to avoid memory bloat
+            const lines = console_el.textContent.split('\n');
+            if (lines.length > 52) {
+                console_el.textContent = lines.slice(lines.length - 50).join('\n');
+            }
+            console_el.scrollTop = console_el.scrollHeight;
+        }
+
+        // Dynamic model listing helper with pagination support
+        async function fetchAvailableGeminiModels(apiKey) {
+            if (!apiKey) return;
+            const apiVersions = ['v1beta', 'v1'];
+            let modelsList = [];
+            let success = false;
+            
+            for (const apiVer of apiVersions) {
+                try {
+                    let nextPageToken = null;
+                    let allModels = [];
+                    do {
+                        let url = `https://generativelanguage.googleapis.com/${apiVer}/models?key=${apiKey}&pageSize=100`;
+                        if (nextPageToken) {
+                            url += `&pageToken=${nextPageToken}`;
+                        }
+                        const response = await fetch(url);
+                        if (!response.ok) {
+                            const errData = await response.json().catch(() => ({}));
+                            throw new Error(errData.error?.message || `HTTP ${response.status}`);
+                        }
+                        const data = await response.json();
+                        if (data.models && data.models.length > 0) {
+                            allModels = allModels.concat(data.models);
+                        }
+                        nextPageToken = data.nextPageToken || null;
+                    } while (nextPageToken);
+
+                    if (allModels.length > 0) {
+                        modelsList = allModels;
+                        success = true;
+                        localStorage.setItem('geminiApiVersion', apiVer);
+                        logDebug(`[Model Discovery] Found ${allModels.length} models via ${apiVer}`);
+                        break;
+                    }
+                } catch (e) {
+                    console.warn(`Failed to fetch models list using ${apiVer}:`, e);
+                    logDebug(`[Model Discovery Error] ${apiVer}: ${e.message}`);
+                }
+            }
+            
+            if (success) {
+                // --- Exclusion patterns for non-translation specialized models ---
+                // TTS / image / audio / live models also support generateContent but are NOT text translators
+                const EXCLUDED_NAME_PATTERNS = [
+                    'tts', '-image', 'native-audio', '-live', '-robotics',
+                    'computer-use', 'bidi', 'nano-banana'
+                ];
+                const EXCLUDED_PREFIXES = [
+                    'models/gemma-',
+                    'models/lyria-',
+                    'models/deep-research-',
+                    'models/antigravity-',
+                    'models/gemini-embedding-',
+                    'models/gemini-robotics-',
+                ];
+
+                const filteredModels = modelsList.filter(m => {
+                    if (!m.supportedGenerationMethods?.includes('generateContent')) return false;
+                    if (!m.name.startsWith('models/gemini-')) return false;
+                    if (EXCLUDED_PREFIXES.some(p => m.name.startsWith(p))) return false;
+                    const shortName = m.name.replace('models/', '');
+                    if (EXCLUDED_NAME_PATTERNS.some(p => shortName.includes(p))) return false;
+                    return true;
+                });
+
+                // --- Sort: stable > preview > exp > alias, then version descending ---
+                const rankModel = (name) => {
+                    if (name.includes('-preview')) return 1;
+                    if (name.includes('-exp'))     return 2;
+                    if (name.endsWith('-latest'))  return 3;
+                    return 0; // stable release
+                };
+                filteredModels.sort((a, b) => {
+                    const rankDiff = rankModel(a.name) - rankModel(b.name);
+                    if (rankDiff !== 0) return rankDiff;
+                    return b.name.localeCompare(a.name);
+                });
+
+                logDebug(`[Model Discovery] ${filteredModels.length} usable translation models after filtering`);
+                if (filteredModels.length > 0) {
+                    const select = document.getElementById('select-gemini-model');
+                    select.innerHTML = '';
+                    filteredModels.forEach(m => {
+                        const modelId = m.name.replace('models/', '');
+                        const option = document.createElement('option');
+                        option.value = modelId;
+                        option.textContent = m.displayName || modelId;
+                        select.appendChild(option);
+                    });
+
+                    // --- Auto-select: prefer newest stable Flash (best speed/quality for translation) ---
+                    const isStable = (name) => rankModel(name) === 0;
+                    const preferenceOrder = [
+                        m => m.name === 'models/gemini-3.5-flash',
+                        m => m.name === 'models/gemini-3.1-flash-lite',
+                        m => m.name.startsWith('models/gemini-3.') && m.name.includes('flash') && isStable(m.name),
+                        m => m.name.startsWith('models/gemini-3') && m.name.includes('flash') && isStable(m.name),
+                        m => m.name === 'models/gemini-2.5-flash',
+                        m => m.name.startsWith('models/gemini-2.5') && m.name.includes('flash') && isStable(m.name),
+                        m => m.name === 'models/gemini-2.0-flash',
+                        m => m.name === 'models/gemini-2.0-flash-001',
+                        m => m.name.includes('flash') && isStable(m.name),
+                        m => isStable(m.name),
+                    ];
+                    let autoSelected = null;
+                    for (const pred of preferenceOrder) {
+                        autoSelected = filteredModels.find(pred);
+                        if (autoSelected) break;
+                    }
+                    autoSelected = autoSelected || filteredModels[0];
+                    geminiModel = autoSelected.name.replace('models/', '');
+                    select.value = geminiModel;
+                    localStorage.setItem('geminiModel', geminiModel);
+
+                    // Update the read-only label in settings
+                    const label = document.getElementById('active-model-label');
+                    if (label) label.textContent = autoSelected.displayName || geminiModel;
+
+                    logDebug(`[Model Discovery] Auto-selected: ${geminiModel} (${autoSelected.displayName || ''})`);
+                }
+            } else {
+                logDebug('[Model Discovery] Failed to retrieve models from API. Using default list.');
+            }
+        }
+
+        // Fetch models list on startup if API key is already configured
+        if (geminiApiKey) {
+            fetchAvailableGeminiModels(geminiApiKey);
+        }
+
+        // Engine Status Health Checks
+        async function runEngineHealthChecks() {
+            // 1. STT Health Check
+            const sttIndicator = document.getElementById('indicator-stt');
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                sttIndicator.style.backgroundColor = '#22c55e'; // Green
+                sttIndicator.title = "Speech-to-Text: Supported and Ready";
+            } else {
+                sttIndicator.style.backgroundColor = '#ef4444'; // Red
+                sttIndicator.title = "Speech-to-Text: Not supported in this browser";
+                logDebug('[Health] STT: Not supported in this browser');
+            }
+
+            // 2. TTS Health Check
+            const ttsIndicator = document.getElementById('indicator-tts');
+            if ('speechSynthesis' in window) {
+                ttsIndicator.style.backgroundColor = '#22c55e'; // Green
+                ttsIndicator.title = "Speech Synthesis: Supported and Ready";
+            } else {
+                ttsIndicator.style.backgroundColor = '#ef4444'; // Red
+                ttsIndicator.title = "Speech Synthesis: Not supported in this browser";
+                logDebug('[Health] TTS: Not supported in this browser');
+            }
+
+            // 3. Gemini API Health Check
+            const geminiIndicator = document.getElementById('indicator-gemini');
+            if (!geminiApiKey) {
+                geminiIndicator.style.backgroundColor = '#eab308'; // Yellow
+                geminiIndicator.title = "Gemini AI: API Key missing. Please set it in Settings.";
+                logDebug('[Health] Gemini AI: API Key not set');
+            } else {
+                geminiIndicator.style.backgroundColor = '#94a3b8'; // Gray (Testing)
+                geminiIndicator.title = 'Gemini AI: Testing connection...';
+                const testResult = await TranslationService.testGeminiConnection(geminiApiKey, geminiModel);
+                if (testResult.success) {
+                    geminiIndicator.style.backgroundColor = '#22c55e'; // Green
+                    geminiIndicator.title = `Gemini AI: Connected (${geminiModel} via ${testResult.apiVer})`;
+                    logDebug(`[Health] Gemini AI: OK (${geminiModel} via ${testResult.apiVer})`);
+                } else {
+                    geminiIndicator.style.backgroundColor = '#ef4444'; // Red
+                    geminiIndicator.title = `Gemini AI Error: ${testResult.error}`;
+                    logDebug(`[Health] Gemini AI: FAILED - ${testResult.error}`);
+                }
+            }
+        }
+
+        // Run health checks on startup
+        runEngineHealthChecks();
+
+        // Clear debug log on NEXT CHAT
+        document.getElementById('clear-all-btn').addEventListener('click', () => {
+            const debugConsole = document.getElementById('debug-log-console');
+            debugConsole.textContent = '';
+            debugConsole.style.display = 'none';
+        });
+    </script>
+</body>
+</html>
