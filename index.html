@@ -1,4 +1,4 @@
-<!-- Version: v1.7.5 (Vercel Serverless Proxy) -->
+<!-- Version: v1.7.6 (DeepL zh-TW & Gemini Advisor Visibility) -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -772,7 +772,7 @@
                     <span id="indicator-tts" style="width: 8px; height: 8px; border-radius: 50%; background-color: #94a3b8; display: inline-block; transition: background-color 0.3s;"></span> TTS
                 </span>
             </div>
-            <div style="font-size: 0.68rem; opacity: 0.75; font-weight: 500;">v1.7.2 (DeepL Key Sanitization)</div>
+            <div style="font-size: 0.68rem; opacity: 0.75; font-weight: 500;">v1.7.6 (DeepL zh-TW & Gemini Advisor Visibility)</div>
         </footer>
 
         <!-- Settings Overlay Modal -->
@@ -1108,6 +1108,8 @@ Example Output structure:
                 const host = localStorage.getItem('deeplHost') || (apiKey.endsWith(':fx') ? 'api-free.deepl.com' : 'api.deepl.com');
                 let targetLang = toCode.toUpperCase();
                 if (targetLang === 'EN') targetLang = 'EN-US';
+                if (targetLang === 'ZH-TW') targetLang = 'ZH-HANT';
+                if (targetLang === 'ZH-CN') targetLang = 'ZH-HANS';
                 
                 const response = await fetch('/api/deepl', {
                     method: 'POST',
@@ -1217,6 +1219,7 @@ Example Output structure:
         let transEngine = localStorage.getItem('transEngine') || 'mymemory';
         let geminiApiKey = sanitizeKey(localStorage.getItem('geminiApiKey') || '');
         let deeplApiKey = sanitizeKey(localStorage.getItem('deeplApiKey') || '');
+        let isGeminiConnected = false;
         let geminiModel = localStorage.getItem('geminiModel') || 'gemini-2.0-flash';
         if (geminiModel === 'gemini-3-flash-preview') {
             geminiModel = 'gemini-2.0-flash';
@@ -1819,8 +1822,12 @@ Example Output structure:
                 }
             }
 
-            // Always display the advisor section
-            advisorInteractiveSection.style.display = 'block';
+            // Display the advisor section only if Gemini is the active engine and connected
+            if (transEngine === 'gemini' && isGeminiConnected) {
+                advisorInteractiveSection.style.display = 'block';
+            } else {
+                advisorInteractiveSection.style.display = 'none';
+            }
 
             if (activeText && !activeText.startsWith("⚡") && !activeText.startsWith("[")) {
                 advisorPromptText.innerText = `Adapt text for ${locationNames[loc]}: "${activeText}"`;
@@ -2424,6 +2431,7 @@ Provide ONLY the final local expression string itself. Do NOT include any explan
                     transIndicator.style.backgroundColor = '#eab308'; // Yellow
                     transIndicator.title = "Gemini AI: API Key missing. Please set it in Settings.";
                     logDebug('[Health] Gemini AI: API Key not set');
+                    isGeminiConnected = false;
                 } else {
                     transIndicator.style.backgroundColor = '#94a3b8'; // Gray (Testing)
                     transIndicator.title = 'Gemini AI: Testing connection...';
@@ -2432,13 +2440,16 @@ Provide ONLY the final local expression string itself. Do NOT include any explan
                         transIndicator.style.backgroundColor = '#22c55e'; // Green
                         transIndicator.title = `Gemini AI: Connected (${geminiModel} via ${testResult.apiVer})`;
                         logDebug(`[Health] Gemini AI: OK (${geminiModel} via ${testResult.apiVer})`);
+                        isGeminiConnected = true;
                     } else {
                         transIndicator.style.backgroundColor = '#ef4444'; // Red
                         transIndicator.title = `Gemini AI Error: ${testResult.error}`;
                         logDebug(`[Health] Gemini AI: FAILED - ${testResult.error}`);
+                        isGeminiConnected = false;
                     }
                 }
             } else if (transEngine === 'deepl') {
+                isGeminiConnected = false;
                 if (!deeplApiKey) {
                     transIndicator.style.backgroundColor = '#eab308'; // Yellow
                     transIndicator.title = "DeepL: API Key missing. Please set it in Settings.";
@@ -2458,6 +2469,7 @@ Provide ONLY the final local expression string itself. Do NOT include any explan
                     }
                 }
             } else {
+                isGeminiConnected = false;
                 // Mock / MyMemory
                 transIndicator.style.backgroundColor = '#22c55e'; // Green
                 transIndicator.title = `${transEngine.toUpperCase()} Engine Ready (No Key Required)`;
