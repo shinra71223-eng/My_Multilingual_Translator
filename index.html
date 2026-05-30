@@ -1,4 +1,4 @@
-﻿<!-- Version: v1.6.2 (Persistent Travel Advisor) -->
+<!-- Version: v1.7.3 (Unified Key Sanitization) -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -766,13 +766,13 @@
                     <span id="indicator-stt" style="width: 8px; height: 8px; border-radius: 50%; background-color: #94a3b8; display: inline-block; transition: background-color 0.3s;"></span> STT
                 </span>
                 <span style="display: flex; align-items: center; gap: 5px;">
-                    <span id="indicator-gemini" style="width: 8px; height: 8px; border-radius: 50%; background-color: #94a3b8; display: inline-block; transition: background-color 0.3s;"></span> Gemini AI
+                    <span id="indicator-trans" style="width: 8px; height: 8px; border-radius: 50%; background-color: #94a3b8; display: inline-block; transition: background-color 0.3s;"></span> Translation AI
                 </span>
                 <span style="display: flex; align-items: center; gap: 5px;">
                     <span id="indicator-tts" style="width: 8px; height: 8px; border-radius: 50%; background-color: #94a3b8; display: inline-block; transition: background-color 0.3s;"></span> TTS
                 </span>
             </div>
-            <div style="font-size: 0.68rem; opacity: 0.75; font-weight: 500;">v1.6.2 (Persistent Travel Advisor)</div>
+            <div style="font-size: 0.68rem; opacity: 0.75; font-weight: 500;">v1.7.2 (DeepL Key Sanitization)</div>
         </footer>
 
         <!-- Settings Overlay Modal -->
@@ -799,6 +799,7 @@
                         <option value="mymemory">MyMemory API (Neural MT)</option>
                         <option value="gemini">Google Gemini AI (Real)</option>
                         <option value="gemini-mock">Gemini Pro AI (Mock)</option>
+                        <option value="deepl">DeepL Translator (Real)</option>
                         <option value="deepl-mock">DeepL Translator (Mock)</option>
                     </select>
                 </div>
@@ -812,6 +813,17 @@
                     </div>
                     <div id="gemini-test-status" style="font-size: 0.8rem; line-height: 1.4; padding: 8px 12px; border-radius: 8px; display: none; margin-bottom: 6px;"></div>
                     <div class="key-hint">Get a free key from <a href="https://aistudio.google.com/" target="_blank">Google AI Studio</a></div>
+                </div>
+
+                <!-- DeepL API Key Input -->
+                <div id="deepl-key-group" class="setting-group" style="display: none;">
+                    <label for="input-deepl-key">DeepL API Key</label>
+                    <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+                        <input type="password" id="input-deepl-key" class="setting-input" placeholder="e.g. 12345678-abcd..." style="flex-grow: 1;">
+                        <button id="btn-test-deepl" class="setting-select" style="width: auto; padding: 10px 16px; background-color: var(--primary-color); color: white; border: none; font-weight: 600; border-radius: 12px; cursor: pointer; transition: background-color 0.2s;">Test</button>
+                    </div>
+                    <div id="deepl-test-status" style="font-size: 0.8rem; line-height: 1.4; padding: 8px 12px; border-radius: 8px; display: none; margin-bottom: 6px;"></div>
+                    <div class="key-hint">Get a key (500k chars/mo free) from <a href="https://www.deepl.com/pro-api" target="_blank">DeepL Developer</a></div>
                 </div>
 
                 <!-- Gemini Active Model (Auto-detected) -->
@@ -922,6 +934,8 @@
                     case 'gemini-mock':
                         const geminiResult = await this._fetchMyMemory(text, fromCode, toCode);
                         return `✨ [Gemini AI] ${geminiResult}`;
+                    case 'deepl':
+                        return await this._fetchDeepL(text, fromCode, toCode, deeplApiKey);
                     case 'deepl-mock':
                         const deeplResult = await this._fetchMyMemory(text, fromCode, toCode);
                         return `💎 [DeepL] ${deeplResult}`;
@@ -1056,6 +1070,72 @@ Example Output structure:
                 return names[code] || code;
             },
 
+            async testDeepLConnection(rawApiKey) {
+                // Remove any non-ASCII characters (spaces, linebreaks, non-ISO-8859-1)
+                const apiKey = (rawApiKey || '').replace(/[^\x21-\x7E]/g, '');
+                if (!apiKey) return { success: false, error: "API Key is empty or invalid" };
+
+                const isFreeKey = apiKey.endsWith(':fx');
+                const host = isFreeKey ? 'api-free.deepl.com' : 'api.deepl.com';
+                const targetUrl = `https://${host}/v2/usage`;
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+                
+                try {
+                    const response = await fetch(proxyUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `DeepL-Auth-Key ${apiKey}`
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        const errText = await response.text().catch(() => '');
+                        throw new Error(`HTTP ${response.status} - ${errText}`);
+                    }
+                    
+                    const data = await response.json();
+                    const usage = `${data.character_count} / ${data.character_limit} characters`;
+                    localStorage.setItem('deeplHost', host);
+                    return { success: true, endpoint: host, usage };
+                } catch (e) {
+                    console.error("DeepL Connection test failed:", e);
+                    return { success: false, error: e.message || "Failed to contact DeepL API due to CORS" };
+                }
+            },
+
+            async _fetchDeepL(text, fromCode, toCode, rawApiKey) {
+                const apiKey = (rawApiKey || '').replace(/[^\x21-\x7E]/g, '');
+                if (!apiKey) throw new Error("DeepL API Key is missing or invalid");
+
+                const host = localStorage.getItem('deeplHost') || (apiKey.endsWith(':fx') ? 'api-free.deepl.com' : 'api.deepl.com');
+                const targetUrl = `https://${host}/v2/translate`;
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+                
+                let targetLang = toCode.toUpperCase();
+                if (targetLang === 'EN') targetLang = 'EN-US';
+                
+                const response = await fetch(proxyUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `DeepL-Auth-Key ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: [text],
+                        target_lang: targetLang,
+                        source_lang: fromCode.toUpperCase()
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errText = await response.text().catch(() => '');
+                    throw new Error(`HTTP ${response.status} - ${errText}`);
+                }
+                
+                const data = await response.json();
+                return data.translations?.[0]?.text || '';
+            },
+
             async _fetchMyMemory(text, fromCode, toCode) {
                 try {
                     const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${fromCode}|${toCode}`;
@@ -1134,9 +1214,14 @@ Example Output structure:
         let currentInputLang = 'ja';
         let isTypingMode = false;
         
+        function sanitizeKey(key) {
+            return (key || '').replace(/[^\x21-\x7E]/g, '');
+        }
+
         let sttEngine = localStorage.getItem('sttEngine') || 'native';
         let transEngine = localStorage.getItem('transEngine') || 'mymemory';
-        let geminiApiKey = localStorage.getItem('geminiApiKey') || '';
+        let geminiApiKey = sanitizeKey(localStorage.getItem('geminiApiKey') || '');
+        let deeplApiKey = sanitizeKey(localStorage.getItem('deeplApiKey') || '');
         let geminiModel = localStorage.getItem('geminiModel') || 'gemini-2.0-flash';
         if (geminiModel === 'gemini-3-flash-preview') {
             geminiModel = 'gemini-2.0-flash';
@@ -1163,10 +1248,15 @@ Example Output structure:
         const closeSettingsBtn = document.getElementById('close-settings-btn');
         const selectSttEngine = document.getElementById('select-stt-engine');
         const selectTransEngine = document.getElementById('select-trans-engine');
+        
         const inputGeminiKey = document.getElementById('input-gemini-key');
         const geminiKeyGroup = document.getElementById('gemini-key-group');
         const geminiModelGroup = document.getElementById('gemini-model-group');
         const selectGeminiModel = document.getElementById('select-gemini-model');
+
+        const inputDeeplKey = document.getElementById('input-deepl-key');
+        const deeplKeyGroup = document.getElementById('deepl-key-group');
+        
         const selectTtsPreset = document.getElementById('select-tts-preset');
 
         // Travel Assistant DOM Elements
@@ -1184,20 +1274,27 @@ Example Output structure:
         selectSttEngine.value = sttEngine;
         selectTransEngine.value = transEngine;
         inputGeminiKey.value = geminiApiKey;
+        inputDeeplKey.value = deeplApiKey;
         selectGeminiModel.value = geminiModel;
         selectTtsPreset.value = ttsPreset;
 
-        // Toggle Gemini input fields visibility based on engine selection
-        function toggleGeminiKeyVisibility() {
+        // Toggle Gemini / DeepL input fields visibility based on engine selection
+        function toggleKeyVisibility() {
             if (transEngine === 'gemini') {
                 geminiKeyGroup.style.display = 'block';
                 geminiModelGroup.style.display = 'block';
+                deeplKeyGroup.style.display = 'none';
+            } else if (transEngine === 'deepl') {
+                geminiKeyGroup.style.display = 'none';
+                geminiModelGroup.style.display = 'none';
+                deeplKeyGroup.style.display = 'block';
             } else {
                 geminiKeyGroup.style.display = 'none';
                 geminiModelGroup.style.display = 'none';
+                deeplKeyGroup.style.display = 'none';
             }
         }
-        toggleGeminiKeyVisibility();
+        toggleKeyVisibility();
 
         const micIconPath = `<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>`;
         const translateIconPath = `<path d="M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3zM9 3L5 6.99h3V14h2V6.99h3L9 3z"/>`;
@@ -1276,7 +1373,7 @@ Example Output structure:
         selectTransEngine.addEventListener('change', (e) => {
             transEngine = e.target.value;
             localStorage.setItem('transEngine', transEngine);
-            toggleGeminiKeyVisibility();
+            toggleKeyVisibility();
             statusDisplay.innerText = `Switched translation engine to ${selectTransEngine.options[selectTransEngine.selectedIndex].text}`;
             if (transEngine === 'gemini') {
                 fetchAvailableGeminiModels(geminiApiKey);
@@ -1285,10 +1382,17 @@ Example Output structure:
         });
 
         inputGeminiKey.addEventListener('input', (e) => {
-            geminiApiKey = e.target.value.trim();
+            geminiApiKey = sanitizeKey(e.target.value);
             localStorage.setItem('geminiApiKey', geminiApiKey);
             document.getElementById('gemini-test-status').style.display = 'none';
             fetchAvailableGeminiModels(geminiApiKey);
+            runEngineHealthChecks();
+        });
+
+        inputDeeplKey.addEventListener('input', (e) => {
+            deeplApiKey = sanitizeKey(e.target.value);
+            localStorage.setItem('deeplApiKey', deeplApiKey);
+            document.getElementById('deepl-test-status').style.display = 'none';
             runEngineHealthChecks();
         });
 
@@ -1320,12 +1424,46 @@ Example Output structure:
                 geminiTestStatus.style.backgroundColor = '#dcfce7';
                 geminiTestStatus.style.color = '#166534';
                 geminiTestStatus.innerHTML = `🟢 <strong>Connection Success!</strong><br>API Version: <code>${testResult.apiVer}</code><br>Response: "${testResult.text}"`;
-                // Dynamically refresh models list upon successful connection test
                 await fetchAvailableGeminiModels(geminiApiKey);
             } else {
                 geminiTestStatus.style.backgroundColor = '#fee2e2';
                 geminiTestStatus.style.color = '#991b1b';
                 geminiTestStatus.innerHTML = `🔴 <strong>Connection Failed</strong><br>Error: ${testResult.error}`;
+            }
+        });
+
+        const btnTestDeepl = document.getElementById('btn-test-deepl');
+        const deeplTestStatus = document.getElementById('deepl-test-status');
+
+        btnTestDeepl.addEventListener('click', async () => {
+            if (!deeplApiKey) {
+                deeplTestStatus.style.display = 'block';
+                deeplTestStatus.style.backgroundColor = '#fee2e2';
+                deeplTestStatus.style.color = '#991b1b';
+                deeplTestStatus.innerText = "Error: API key is empty.";
+                return;
+            }
+
+            btnTestDeepl.disabled = true;
+            btnTestDeepl.innerText = "...";
+            deeplTestStatus.style.display = 'block';
+            deeplTestStatus.style.backgroundColor = '#f1f5f9';
+            deeplTestStatus.style.color = '#334155';
+            deeplTestStatus.innerText = "Connecting to DeepL API...";
+
+            const testResult = await TranslationService.testDeepLConnection(deeplApiKey);
+
+            btnTestDeepl.disabled = false;
+            btnTestDeepl.innerText = "Test";
+
+            if (testResult.success) {
+                deeplTestStatus.style.backgroundColor = '#dcfce7';
+                deeplTestStatus.style.color = '#166534';
+                deeplTestStatus.innerHTML = `🟢 <strong>Connection Success!</strong><br>API: <code>${testResult.endpoint}</code><br>Usage Limit: ${testResult.usage}`;
+            } else {
+                deeplTestStatus.style.backgroundColor = '#fee2e2';
+                deeplTestStatus.style.color = '#991b1b';
+                deeplTestStatus.innerHTML = `🔴 <strong>Connection Failed</strong><br>Error: ${testResult.error}`;
             }
         });
 
@@ -2282,25 +2420,53 @@ Provide ONLY the final local expression string itself. Do NOT include any explan
                 logDebug('[Health] TTS: Not supported in this browser');
             }
 
-            // 3. Gemini API Health Check
-            const geminiIndicator = document.getElementById('indicator-gemini');
-            if (!geminiApiKey) {
-                geminiIndicator.style.backgroundColor = '#eab308'; // Yellow
-                geminiIndicator.title = "Gemini AI: API Key missing. Please set it in Settings.";
-                logDebug('[Health] Gemini AI: API Key not set');
-            } else {
-                geminiIndicator.style.backgroundColor = '#94a3b8'; // Gray (Testing)
-                geminiIndicator.title = 'Gemini AI: Testing connection...';
-                const testResult = await TranslationService.testGeminiConnection(geminiApiKey, geminiModel);
-                if (testResult.success) {
-                    geminiIndicator.style.backgroundColor = '#22c55e'; // Green
-                    geminiIndicator.title = `Gemini AI: Connected (${geminiModel} via ${testResult.apiVer})`;
-                    logDebug(`[Health] Gemini AI: OK (${geminiModel} via ${testResult.apiVer})`);
+            // 3. Translation Engine Health Check
+            const transIndicator = document.getElementById('indicator-trans');
+            if (!transIndicator) return;
+
+            if (transEngine === 'gemini') {
+                if (!geminiApiKey) {
+                    transIndicator.style.backgroundColor = '#eab308'; // Yellow
+                    transIndicator.title = "Gemini AI: API Key missing. Please set it in Settings.";
+                    logDebug('[Health] Gemini AI: API Key not set');
                 } else {
-                    geminiIndicator.style.backgroundColor = '#ef4444'; // Red
-                    geminiIndicator.title = `Gemini AI Error: ${testResult.error}`;
-                    logDebug(`[Health] Gemini AI: FAILED - ${testResult.error}`);
+                    transIndicator.style.backgroundColor = '#94a3b8'; // Gray (Testing)
+                    transIndicator.title = 'Gemini AI: Testing connection...';
+                    const testResult = await TranslationService.testGeminiConnection(geminiApiKey, geminiModel);
+                    if (testResult.success) {
+                        transIndicator.style.backgroundColor = '#22c55e'; // Green
+                        transIndicator.title = `Gemini AI: Connected (${geminiModel} via ${testResult.apiVer})`;
+                        logDebug(`[Health] Gemini AI: OK (${geminiModel} via ${testResult.apiVer})`);
+                    } else {
+                        transIndicator.style.backgroundColor = '#ef4444'; // Red
+                        transIndicator.title = `Gemini AI Error: ${testResult.error}`;
+                        logDebug(`[Health] Gemini AI: FAILED - ${testResult.error}`);
+                    }
                 }
+            } else if (transEngine === 'deepl') {
+                if (!deeplApiKey) {
+                    transIndicator.style.backgroundColor = '#eab308'; // Yellow
+                    transIndicator.title = "DeepL: API Key missing. Please set it in Settings.";
+                    logDebug('[Health] DeepL: API Key not set');
+                } else {
+                    transIndicator.style.backgroundColor = '#94a3b8'; // Gray (Testing)
+                    transIndicator.title = 'DeepL: Testing connection...';
+                    const testResult = await TranslationService.testDeepLConnection(deeplApiKey);
+                    if (testResult.success) {
+                        transIndicator.style.backgroundColor = '#22c55e'; // Green
+                        transIndicator.title = `DeepL: Connected (${testResult.endpoint})`;
+                        logDebug(`[Health] DeepL: OK (Host: ${testResult.endpoint}, usage: ${testResult.usage})`);
+                    } else {
+                        transIndicator.style.backgroundColor = '#ef4444'; // Red
+                        transIndicator.title = `DeepL Error: ${testResult.error}`;
+                        logDebug(`[Health] DeepL: FAILED - ${testResult.error}`);
+                    }
+                }
+            } else {
+                // Mock / MyMemory
+                transIndicator.style.backgroundColor = '#22c55e'; // Green
+                transIndicator.title = `${transEngine.toUpperCase()} Engine Ready (No Key Required)`;
+                logDebug(`[Health] ${transEngine.toUpperCase()}: Ready`);
             }
         }
 
