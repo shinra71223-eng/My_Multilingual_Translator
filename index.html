@@ -1,10 +1,11 @@
-<!-- Version: v1.7.7 (Source Highlight Glow Effect) -->
+<!-- Version: v1.7.8 (Icon Integration) -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simultaneous Translator</title>
+    <link rel="icon" type="image/png" href="ICON.png">
     <!-- Google Fonts for premium typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -593,9 +594,12 @@
     <div class="app-container">
         <!-- Header -->
         <header>
-            <div class="header-content">
-                <h1>Simultaneous Translator (JP·EN·ZH·KO)</h1>
-                <div id="status-display" class="status-text">Tap SPEAK to start or type in the active card</div>
+            <div class="header-content" style="display: flex; align-items: center; gap: 12px;">
+                <img src="ICON.png" alt="App Icon" style="width: 42px; height: 42px; object-fit: contain; border-radius: 10px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);">
+                <div>
+                    <h1 style="margin: 0; font-size: 1.35rem; font-weight: 700; color: var(--text-dark);">Simultaneous Translator <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-muted);">(JP·EN·ZH·KO)</span></h1>
+                    <div id="status-display" class="status-text" style="margin-top: 2px;">Tap SPEAK to start or type in the active card</div>
+                </div>
             </div>
             <!-- Header Actions -->
             <div style="display: flex; gap: 6px; align-items: center; margin-left: 10px;">
@@ -780,7 +784,7 @@
                     <span id="indicator-tts" style="width: 8px; height: 8px; border-radius: 50%; background-color: #94a3b8; display: inline-block; transition: background-color 0.3s;"></span> TTS
                 </span>
             </div>
-            <div style="font-size: 0.68rem; opacity: 0.75; font-weight: 500;">v1.7.7 (Source Highlight Glow Effect)</div>
+            <div style="font-size: 0.68rem; opacity: 0.75; font-weight: 500;">v1.7.8 (Icon Integration)</div>
         </footer>
 
         <!-- Settings Overlay Modal -->
