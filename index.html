@@ -1,4 +1,4 @@
-<!-- Version: v1.7.3 (Unified Key Sanitization) -->
+<!-- Version: v1.7.4 (DeepL Header CORS Bypass) -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -1078,14 +1078,15 @@ Example Output structure:
                 const isFreeKey = apiKey.endsWith(':fx');
                 const host = isFreeKey ? 'api-free.deepl.com' : 'api.deepl.com';
                 const targetUrl = `https://${host}/v2/usage`;
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+                
+                // Use corsproxy.io custom reqHeaders param to avoid sending custom headers in browser fetch,
+                // which triggers CORS preflight (OPTIONS) blocks in some networks/browsers.
+                const encodedAuth = encodeURIComponent(`DeepL-Auth-Key ${apiKey}`);
+                const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}&reqHeaders=authorization:${encodedAuth}`;
                 
                 try {
                     const response = await fetch(proxyUrl, {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `DeepL-Auth-Key ${apiKey}`
-                        }
+                        method: 'GET'
                     });
                     
                     if (!response.ok) {
@@ -1109,7 +1110,9 @@ Example Output structure:
 
                 const host = localStorage.getItem('deeplHost') || (apiKey.endsWith(':fx') ? 'api-free.deepl.com' : 'api.deepl.com');
                 const targetUrl = `https://${host}/v2/translate`;
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+                
+                const encodedAuth = encodeURIComponent(`DeepL-Auth-Key ${apiKey}`);
+                const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}&reqHeaders=authorization:${encodedAuth}`;
                 
                 let targetLang = toCode.toUpperCase();
                 if (targetLang === 'EN') targetLang = 'EN-US';
@@ -1117,7 +1120,6 @@ Example Output structure:
                 const response = await fetch(proxyUrl, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `DeepL-Auth-Key ${apiKey}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
