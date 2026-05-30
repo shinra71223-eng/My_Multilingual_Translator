@@ -1,4 +1,4 @@
-<!-- Version: v1.7.6 (DeepL zh-TW & Gemini Advisor Visibility) -->
+<!-- Version: v1.7.7 (Source Highlight Glow Effect) -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -127,7 +127,9 @@
             margin-bottom: 24px;
             max-height: 580px;
             overflow-y: auto;
-            padding-right: 2px;
+            padding: 4px 6px 4px 10px;
+            margin-left: -10px;
+            margin-right: -6px;
         }
 
         /* Hide scrollbar for Chrome, Safari and Opera */
@@ -569,10 +571,16 @@
             text-transform: uppercase;
         }
 
-        /* Highlighting Source card without border-glow conflict */
+        /* Highlighting Source card with a soft left-side outer glow instead of a hard border-left override */
         .card.translation-source {
-            border-left: 5px solid var(--success-color);
             background-color: rgba(52, 199, 89, 0.04) !important;
+            box-shadow: -6px 0 16px -2px rgba(52, 199, 89, 0.6), 0 4px 18px rgba(0, 0, 0, 0.02);
+        }
+
+        /* If the source card is also the active (selected) input card, combine the blue border with the outer green glow */
+        .card.active-input.translation-source {
+            border: 2px solid var(--primary-color);
+            box-shadow: -8px 0 18px -2px rgba(52, 199, 89, 0.75), 0 8px 24px rgba(0, 122, 255, 0.08);
         }
 
         .card.translation-source .base-badge {
@@ -772,7 +780,7 @@
                     <span id="indicator-tts" style="width: 8px; height: 8px; border-radius: 50%; background-color: #94a3b8; display: inline-block; transition: background-color 0.3s;"></span> TTS
                 </span>
             </div>
-            <div style="font-size: 0.68rem; opacity: 0.75; font-weight: 500;">v1.7.6 (DeepL zh-TW & Gemini Advisor Visibility)</div>
+            <div style="font-size: 0.68rem; opacity: 0.75; font-weight: 500;">v1.7.7 (Source Highlight Glow Effect)</div>
         </footer>
 
         <!-- Settings Overlay Modal -->
