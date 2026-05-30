@@ -1,4 +1,4 @@
-<!-- Version: v1.7.9 (DeepL ZH Source & zh-TW Voice Fix) -->
+<!-- Version: v1.8.0 (Header Layout Refinement) -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -57,15 +57,27 @@
         /* Header Layout (Title + Gear button) */
         header {
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
+            flex-direction: column;
+            gap: 10px;
             margin-bottom: 20px;
             position: relative;
         }
 
-        .header-content {
-            flex-grow: 1;
-            text-align: left;
+        .header-top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-bottom-row {
+            width: 100%;
         }
 
         h1 {
@@ -594,43 +606,46 @@
     <div class="app-container">
         <!-- Header -->
         <header>
-            <div class="header-content" style="display: flex; align-items: center; gap: 12px;">
-                <img src="ICON.png" alt="App Icon" style="width: 42px; height: 42px; object-fit: contain; border-radius: 10px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);">
-                <div>
-                    <h1 style="margin: 0; font-size: 1.35rem; font-weight: 700; color: var(--text-dark);">Simultaneous Translator <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-muted);">(JP·EN·ZH·KO)</span></h1>
-                    <div id="status-display" class="status-text" style="margin-top: 2px;">Tap SPEAK to start or type in the active card</div>
+            <div class="header-top-row">
+                <div class="header-brand">
+                    <img src="ICON.png" alt="App Icon" style="width: 42px; height: 42px; object-fit: contain; border-radius: 10px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);">
+                    <h1 style="margin: 0; font-size: 1.35rem; font-weight: 700; color: var(--text-dark); line-height: 1.25;">Simultaneous Translator</h1>
+                </div>
+                <!-- Header Actions -->
+                <div style="display: flex; gap: 6px; align-items: center; margin-left: 10px;">
+                    <!-- Next Chat / Clear Button -->
+                    <button id="clear-all-btn" class="settings-btn" title="Next Chat (Clear All)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                    </button>
+                    <!-- Local Helper / Travel Assistant Button -->
+                    <button id="open-helper-btn" class="settings-btn" title="Local Travel Assistant">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                    </button>
+                    <!-- History Button -->
+                    <button id="open-history-btn" class="settings-btn" title="Translation History">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </button>
+                    <!-- Gear Icon to open Settings -->
+                    <button id="open-settings-btn" class="settings-btn" title="Settings">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
-            <!-- Header Actions -->
-            <div style="display: flex; gap: 6px; align-items: center; margin-left: 10px;">
-                <!-- Next Chat / Clear Button -->
-                <button id="clear-all-btn" class="settings-btn" title="Next Chat (Clear All)">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                </button>
-                <!-- Local Helper / Travel Assistant Button -->
-                <button id="open-helper-btn" class="settings-btn" title="Local Travel Assistant">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                        <circle cx="12" cy="10" r="3"></circle>
-                    </svg>
-                </button>
-                <!-- History Button -->
-                <button id="open-history-btn" class="settings-btn" title="Translation History">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
-                </button>
-                <!-- Gear Icon to open Settings -->
-                <button id="open-settings-btn" class="settings-btn" title="Settings">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                    </svg>
-                </button>
+            <div class="header-bottom-row" style="display: flex; flex-direction: column; gap: 3px;">
+                <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted); opacity: 0.85; letter-spacing: 0.02em;">(JP·EN·ZH·KO)</div>
+                <div id="status-display" class="status-text">Tap SPEAK to start or type in the active card</div>
             </div>
         </header>
 
@@ -784,7 +799,7 @@
                     <span id="indicator-tts" style="width: 8px; height: 8px; border-radius: 50%; background-color: #94a3b8; display: inline-block; transition: background-color 0.3s;"></span> TTS
                 </span>
             </div>
-            <div style="font-size: 0.68rem; opacity: 0.75; font-weight: 500;">v1.7.9 (DeepL ZH Source & zh-TW Voice Fix)</div>
+            <div style="font-size: 0.68rem; opacity: 0.75; font-weight: 500;">v1.8.0 (Header Layout Refinement)</div>
         </footer>
 
         <!-- Settings Overlay Modal -->
