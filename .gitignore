@@ -1,0 +1,4 @@
+.vercel
+*.tmp
+original_code.txt
+services.js
