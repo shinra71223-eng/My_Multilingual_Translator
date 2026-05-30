@@ -1,4 +1,4 @@
-<!-- Version: v1.7.8 (Icon Integration) -->
+<!-- Version: v1.7.9 (DeepL ZH Source & zh-TW Voice Fix) -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -784,7 +784,7 @@
                     <span id="indicator-tts" style="width: 8px; height: 8px; border-radius: 50%; background-color: #94a3b8; display: inline-block; transition: background-color 0.3s;"></span> TTS
                 </span>
             </div>
-            <div style="font-size: 0.68rem; opacity: 0.75; font-weight: 500;">v1.7.8 (Icon Integration)</div>
+            <div style="font-size: 0.68rem; opacity: 0.75; font-weight: 500;">v1.7.9 (DeepL ZH Source & zh-TW Voice Fix)</div>
         </footer>
 
         <!-- Settings Overlay Modal -->
@@ -1123,6 +1123,9 @@ Example Output structure:
                 if (targetLang === 'ZH-TW') targetLang = 'ZH-HANT';
                 if (targetLang === 'ZH-CN') targetLang = 'ZH-HANS';
                 
+                let sourceLang = fromCode.toUpperCase();
+                if (sourceLang.startsWith('ZH')) sourceLang = 'ZH';
+                
                 const response = await fetch('/api/deepl', {
                     method: 'POST',
                     headers: {
@@ -1132,7 +1135,7 @@ Example Output structure:
                     body: JSON.stringify({
                         text: [text],
                         target_lang: targetLang,
-                        source_lang: fromCode.toUpperCase()
+                        source_lang: sourceLang
                     })
                 });
                 
@@ -1591,19 +1594,48 @@ Example Output structure:
             });
         });
 
+        // Helper to convert Simplified Chinese characters to Traditional Chinese when the Taiwan card is selected.
+        // Web Speech API recognition often outputs Simplified Chinese mandarin even if lang is set to zh-TW.
+        async function ensureTraditionalChinese(text, engine) {
+            if (!text || !/[\u4e00-\u9fa5]/.test(text)) return text;
+            try {
+                if (engine === 'gemini' && geminiApiKey) {
+                    const result = await TranslationService.translateMultiGemini(text, 'zh-CN', ['zh-TW'], geminiApiKey, geminiModel);
+                    return result['zh-TW'] || result['ZH-TW'] || text;
+                } else if (engine === 'deepl' && deeplApiKey) {
+                    return await TranslationService._fetchDeepL(text, 'zh-CN', 'zh-TW', deeplApiKey);
+                } else {
+                    return await TranslationService._fetchMyMemory(text, 'zh-CN', 'zh-TW');
+                }
+            } catch (e) {
+                console.warn("Failed to convert Simplified to Traditional Chinese:", e);
+                return text;
+            }
+        }
+
         // Parallel / Single-call Translation Dispatcher
         async function processTranslation(text, fromLang) {
+            // Strip engine prefix markers to avoid marker accumulation
+            let cleanText = text.replace(/^✨\s*\[Gemini\s*AI\]\s*/i, "");
+            cleanText = cleanText.replace(/^💎\s*\[DeepL\]\s*/i, "");
+            cleanText = cleanText.replace(/^🎙️\s*\[Whisper\]\s*/i, "");
+
+            // If the source language is Taiwan Traditional Chinese, ensure the text is converted to Traditional characters.
+            if (fromLang === 'zh-TW') {
+                const converted = await ensureTraditionalChinese(cleanText, transEngine);
+                if (converted && converted !== cleanText) {
+                    cleanText = converted;
+                    const sourceOutput = document.getElementById('out-zh-TW');
+                    if (sourceOutput) sourceOutput.innerText = cleanText;
+                }
+            }
+
             // Highlight base language source card
             document.querySelectorAll('.card').forEach(card => card.classList.remove('translation-source'));
             const sourceCard = document.getElementById(`card-${fromLang}`);
             if (sourceCard) {
                 sourceCard.classList.add('translation-source');
             }
-
-            // Strip engine prefix markers to avoid marker accumulation
-            let cleanText = text.replace(/^✨\s*\[Gemini\s*AI\]\s*/i, "");
-            cleanText = cleanText.replace(/^💎\s*\[DeepL\]\s*/i, "");
-            cleanText = cleanText.replace(/^🎙️\s*\[Whisper\]\s*/i, "");
 
             statusDisplay.innerText = "⚡ Translating...";
             const targets = Object.keys(languages).filter(lang => lang !== fromLang);
